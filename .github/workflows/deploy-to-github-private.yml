@@ -1,0 +1,222 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Deploy Agent Config to .github-private
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agents/**'
+      - 'instructions/**'
+      - 'prompts/**'
+      - 'skills/**'
+      - 'apm.yml'
+      - 'mcp.json'
+      - '.github/copilot-instructions.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to .github-private
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          owner: devopsabcs-engineering
+
+      - name: Checkout .github-private
+        uses: actions/checkout@v4
+        with:
+          repository: devopsabcs-engineering/.github-private
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+
+      - name: Sync files
+        run: |
+          # Sync directories (mirror mode — deletes files in target not in source)
+          for dir in agents instructions prompts; do
+            rm -rf "target/$dir"
+            cp -r "source/$dir" "target/$dir"
+          done
+
+          # Sync skills (preserve directory structure)
+          rm -rf "target/skills"
+          cp -r "source/skills" "target/skills"
+
+          # Sync individual config files
+          cp "source/apm.yml" "target/apm.yml"
+          cp "source/mcp.json" "target/mcp.json"
+
+          # Sync .github/copilot-instructions.md
+          mkdir -p "target/.github"
+          cp "source/.github/copilot-instructions.md" "target/.github/copilot-instructions.md"
+
+      - name: Verify SHA-256 integrity
+        id: verify
+        run: |
+          MANIFEST=(
+            agents/a11y-detector.agent.md
+            agents/a11y-resolver.agent.md
+            agents/code-quality-detector.agent.md
+            agents/cost-analysis-agent.agent.md
+            agents/cost-anomaly-detector.agent.md
+            agents/cost-optimizer-agent.agent.md
+            agents/deployment-cost-gate-agent.agent.md
+            agents/finops-governance-agent.agent.md
+            agents/iac-security-agent.agent.md
+            agents/pipeline-security-agent.agent.md
+            agents/security-agent.agent.md
+            agents/security-plan-creator.agent.md
+            agents/security-reviewer-agent.agent.md
+            agents/supply-chain-security-agent.agent.md
+            agents/test-generator.agent.md
+            instructions/a11y-remediation.instructions.md
+            instructions/code-quality.instructions.md
+            instructions/wcag22-rules.instructions.md
+            prompts/a11y-fix.prompt.md
+            prompts/a11y-scan.prompt.md
+            skills/a11y-scan/SKILL.md
+            skills/security-scan/SKILL.md
+            apm.yml
+            mcp.json
+            .github/copilot-instructions.md
+          )
+
+          echo "Verifying ${#MANIFEST[@]} files..."
+          FAIL=0
+          for file in "${MANIFEST[@]}"; do
+            SRC_HASH=$(sha256sum "source/$file" | cut -d' ' -f1)
+            TGT_HASH=$(sha256sum "target/$file" | cut -d' ' -f1)
+            if [ "$SRC_HASH" != "$TGT_HASH" ]; then
+              echo "❌ MISMATCH: $file"
+              echo "  Source: $SRC_HASH"
+              echo "  Target: $TGT_HASH"
+              FAIL=1
+            else
+              echo "✅ $file"
+            fi
+          done
+          echo "verified=${#MANIFEST[@]}" >> "$GITHUB_OUTPUT"
+          if [ "$FAIL" -eq 1 ]; then
+            echo "::error::SHA-256 integrity check failed"
+            exit 1
+          fi
+          echo "All ${#MANIFEST[@]} files verified"
+
+      - name: Commit and push
+        working-directory: target
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to deploy"
+            exit 0
+          fi
+          SOURCE_SHA="${{ github.sha }}"
+          git commit -m "sync: update agent config from agentic-accelerator-framework@${SOURCE_SHA:0:7}"
+          git push
+
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          owner: devopsabcs-engineering
+
+      - name: Checkout .github-private
+        uses: actions/checkout@v4
+        with:
+          repository: devopsabcs-engineering/.github-private
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+
+      - name: Full hash comparison
+        run: |
+          MANIFEST=(
+            agents/a11y-detector.agent.md
+            agents/a11y-resolver.agent.md
+            agents/code-quality-detector.agent.md
+            agents/cost-analysis-agent.agent.md
+            agents/cost-anomaly-detector.agent.md
+            agents/cost-optimizer-agent.agent.md
+            agents/deployment-cost-gate-agent.agent.md
+            agents/finops-governance-agent.agent.md
+            agents/iac-security-agent.agent.md
+            agents/pipeline-security-agent.agent.md
+            agents/security-agent.agent.md
+            agents/security-plan-creator.agent.md
+            agents/security-reviewer-agent.agent.md
+            agents/supply-chain-security-agent.agent.md
+            agents/test-generator.agent.md
+            instructions/a11y-remediation.instructions.md
+            instructions/code-quality.instructions.md
+            instructions/wcag22-rules.instructions.md
+            prompts/a11y-fix.prompt.md
+            prompts/a11y-scan.prompt.md
+            skills/a11y-scan/SKILL.md
+            skills/security-scan/SKILL.md
+            apm.yml
+            mcp.json
+            .github/copilot-instructions.md
+          )
+
+          FAIL=0
+          for file in "${MANIFEST[@]}"; do
+            SRC_HASH=$(sha256sum "source/$file" | cut -d' ' -f1)
+            TGT_HASH=$(sha256sum "target/$file" | cut -d' ' -f1)
+            if [ "$SRC_HASH" != "$TGT_HASH" ]; then
+              echo "❌ MISMATCH: $file"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" -eq 1 ]; then exit 1; fi
+          echo "All ${#MANIFEST[@]} files verified"
+
+      - name: Generate deployment summary
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## 🚀 Deployment to .github-private
+
+          ### Sync Results
+
+          | Category | Files | Status |
+          |----------|-------|--------|
+          | Agents | 15 | ✅ Synced |
+          | Instructions | 3 | ✅ Synced |
+          | Prompts | 2 | ✅ Synced |
+          | Skills | 2 | ✅ Synced |
+          | Config | 3 | ✅ Synced |
+          | **Total** | **25** | **✅ All verified** |
+
+          ### Integrity Verification
+
+          All 25 files verified by SHA-256 hash comparison.
+
+          **Source**: \`agentic-accelerator-framework@${SOURCE_SHA:0:7}\`
+          **Target**: \`devopsabcs-engineering/.github-private\`
+          EOF

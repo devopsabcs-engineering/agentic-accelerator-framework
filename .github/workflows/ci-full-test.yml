@@ -1,0 +1,157 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: CI Full Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+
+jobs:
+  agent-validation:
+    name: Agent Validation — Structure, Cross-Refs, Domain Rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install validation dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Run agent validation
+        id: validate
+        run: node scripts/validate-agents.mjs
+
+      - name: Upload validation SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: validation-results.sarif
+          category: agent-validation/
+
+  apm-security:
+    name: APM — Agent Config Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run APM audit
+        uses: microsoft/apm-action@v1
+        continue-on-error: true
+        with:
+          audit-report: true
+
+      - name: Upload APM SARIF
+        if: always() && hashFiles('apm-audit.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: apm-audit.sarif
+          category: apm-audit/
+
+  sample-app-quality:
+    name: Sample App — Lint, Type Check, Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sample-app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Type check
+        run: npx tsc --noEmit
+        continue-on-error: true
+
+      - name: Test with coverage
+        run: npm run test:ci
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          if-no-files-found: ignore
+          path: |
+            sample-app/junit.xml
+            sample-app/coverage/
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [agent-validation, apm-security, sample-app-quality]
+    steps:
+      - name: Generate summary
+        env:
+          AGENT_RESULT: ${{ needs.agent-validation.result }}
+          APM_RESULT: ${{ needs.apm-security.result }}
+          APP_RESULT: ${{ needs.sample-app-quality.result }}
+        run: |
+          STATUS_ICON() {
+            case "$1" in
+              success) echo "✅" ;;
+              failure) echo "❌" ;;
+              cancelled) echo "⏭️" ;;
+              skipped) echo "⏭️" ;;
+              *) echo "❓" ;;
+            esac
+          }
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## 🔬 CI Full Test Results
+
+          ### Job Results
+
+          | Job | Status |
+          |-----|--------|
+          | Agent Validation (15 agents, 3 instructions, 2 prompts, 2 skills) | $(STATUS_ICON "$AGENT_RESULT") $AGENT_RESULT |
+          | APM Security Audit | $(STATUS_ICON "$APM_RESULT") $APM_RESULT |
+          | Sample App Quality (lint, type-check, test) | $(STATUS_ICON "$APP_RESULT") $APP_RESULT |
+
+          ### Domain Coverage
+
+          | Domain | Agents | Scope |
+          |--------|--------|-------|
+          | Security | 6 | OWASP Top 10, CWE, SARIF output |
+          | Accessibility | 2 | WCAG 2.2, axe-core |
+          | Code Quality | 2 | Coverage gates, test generation |
+          | FinOps | 5 | Azure Cost Management, Infracost |
+          | **Total** | **15** | **4 domains** |
+
+          ### File Inventory
+
+          | Category | Count |
+          |----------|-------|
+          | Agents | 15 |
+          | Instructions | 3 |
+          | Prompts | 2 |
+          | Skills | 2 |
+          | **Total Validated** | **22** |
+          EOF

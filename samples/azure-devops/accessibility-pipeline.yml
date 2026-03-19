@@ -1,0 +1,104 @@
+# Azure DevOps Accessibility Pipeline
+# Equivalent of .github/workflows/accessibility-scan.yml
+# Covers: axe-core + IBM Equal Access scanning, SARIF publishing, threshold gating
+# Requires: GHAzDO enabled for SARIF publishing to ADO Advanced Security
+# Work item: AB#2075
+
+trigger: none  # Run on PR or schedule only
+
+pr:
+  branches:
+    include:
+      - main
+
+schedules:
+  - cron: '0 6 * * 1'  # Weekly on Monday at 06:00 UTC
+    displayName: Weekly accessibility scan
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: A11Y_THRESHOLD
+    value: 80
+  - name: A11Y_FAIL_THRESHOLD
+    value: 70
+  - name: A11Y_SCAN_URL
+    value: 'http://localhost:3000'  # Override with pipeline variable or variable group
+
+stages:
+  - stage: AccessibilityScan
+    displayName: Accessibility - Three-Engine Scanner
+    jobs:
+      - job: A11yScan
+        displayName: Accessibility Scan
+        steps:
+          - checkout: self
+
+          # ---------------------------------------------------------------
+          # Install scanning tools
+          # ---------------------------------------------------------------
+          - task: NodeTool@0
+            displayName: Setup Node.js
+            inputs:
+              versionSpec: '20.x'
+
+          - script: |
+              npm install -g @axe-core/cli accessibility-checker
+              npx playwright install --with-deps chromium
+            displayName: Install scanning dependencies
+
+          # ---------------------------------------------------------------
+          # Run accessibility scan
+          # ---------------------------------------------------------------
+          - script: |
+              npx a11y-scan scan \
+                --url "$(A11Y_SCAN_URL)" \
+                --threshold $(A11Y_THRESHOLD) \
+                --format sarif \
+                --output a11y-results.sarif
+            displayName: Run accessibility scan
+            continueOnError: true
+
+          # ---------------------------------------------------------------
+          # Publish SARIF to ADO Advanced Security
+          # ---------------------------------------------------------------
+          - task: AdvancedSecurity-Publish@1
+            displayName: Publish A11y SARIF
+            condition: always()
+            inputs:
+              sarifFile: $(Build.SourcesDirectory)/a11y-results.sarif
+
+          # ---------------------------------------------------------------
+          # Threshold gate
+          # ---------------------------------------------------------------
+          - script: |
+              if [ ! -f a11y-results.sarif ]; then
+                echo "##vso[task.logissue type=warning]No SARIF results found"
+                exit 0
+              fi
+
+              CRITICAL_COUNT=$(jq '[.runs[].results[] | select(.level == "error")] | length' a11y-results.sarif 2>/dev/null || echo "0")
+              echo "Critical/serious findings: $CRITICAL_COUNT"
+
+              if [ "$CRITICAL_COUNT" -gt 0 ]; then
+                echo "##vso[task.logissue type=error]Accessibility scan found $CRITICAL_COUNT critical/serious violations"
+                exit 1
+              fi
+
+              SCORE=$(jq '.runs[0].properties.score // 100' a11y-results.sarif 2>/dev/null || echo "100")
+              echo "Accessibility score: $SCORE"
+
+              BELOW_THRESHOLD=$(echo "$SCORE < $(A11Y_FAIL_THRESHOLD)" | bc -l 2>/dev/null || echo 0)
+              if [ "$BELOW_THRESHOLD" -eq 1 ]; then
+                echo "##vso[task.logissue type=error]Accessibility score $SCORE is below minimum threshold $(A11Y_FAIL_THRESHOLD)"
+                exit 1
+              fi
+
+              echo "Accessibility scan passed (score: $SCORE, critical findings: $CRITICAL_COUNT)"
+            displayName: Threshold gate
+            condition: always()

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ado-work-items": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-ado-work-items"],
+      "env": {
+        "ADO_ORG_URL": "${ADO_ORG_URL}",
+        "ADO_PAT": "${ADO_PAT}",
+        "ADO_PROJECT": "${ADO_PROJECT}"
+      }
+    }
+  }
+}

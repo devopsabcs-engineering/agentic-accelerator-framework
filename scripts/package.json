@@ -1,0 +1,9 @@
+{
+  "name": "agentic-accelerator-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "minimatch": "^9.0.0"
+  }
+}

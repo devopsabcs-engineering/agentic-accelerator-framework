@@ -1,0 +1,30 @@
+# Agent configuration file governance (.github-private org-wide layout)
+# All agent-related paths require security team review before merge.
+
+# Repo-wide Copilot instructions
+.github/copilot-instructions.md @devopsabcs-engineering/security-team
+
+# Custom agent definitions (repo root for .github-private layout)
+agents/ @devopsabcs-engineering/security-team
+
+# Path-specific instruction files
+instructions/ @devopsabcs-engineering/security-team
+
+# Reusable prompt templates
+prompts/ @devopsabcs-engineering/security-team
+
+# Domain knowledge skill packages
+skills/ @devopsabcs-engineering/security-team
+
+# Agent and skill manifest files anywhere in the repo
+**/AGENTS.md @devopsabcs-engineering/security-team
+**/SKILL.md @devopsabcs-engineering/security-team
+
+# Agent Package Manager manifest
+apm.yml @devopsabcs-engineering/security-team
+
+# MCP server configuration
+mcp.json @devopsabcs-engineering/security-team
+
+# CI/CD workflow definitions
+.github/workflows/ @devopsabcs-engineering/security-team

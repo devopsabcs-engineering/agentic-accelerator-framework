@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: APM Security Scan
+
+on:
+  pull_request:
+    paths:
+      - 'apm.yml'
+      - 'mcp.json'
+      - 'agents/**'
+      - 'instructions/**'
+      - 'prompts/**'
+      - 'skills/**'
+      - '**/*.agent.md'
+      - '**/*.instructions.md'
+      - '**/*.prompt.md'
+      - '**/AGENTS.md'
+      - '**/SKILL.md'
+      - '.github/copilot-instructions.md'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  audit:
+    name: APM — Agent Config Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run APM audit
+        uses: microsoft/apm-action@v1
+        with:
+          command: audit

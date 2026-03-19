@@ -1,0 +1,223 @@
+# Azure DevOps Code Quality Pipeline
+# Equivalent of .github/workflows/code-quality.yml
+# Covers: linting, type checking, tests with coverage, JUnit + Cobertura publishing, SARIF coverage findings
+# Requires: GHAzDO enabled for SARIF publishing to ADO Advanced Security
+# Work item: AB#2075
+
+trigger: none  # Run on PR only
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: COVERAGE_THRESHOLD
+    value: 80
+
+stages:
+  # ---------------------------------------------------------------------------
+  # Stage 1: Lint
+  # ---------------------------------------------------------------------------
+  - stage: Lint
+    displayName: Lint
+    jobs:
+      - job: LintJob
+        displayName: Run Linter
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            displayName: Setup Node.js
+            inputs:
+              versionSpec: '20.x'
+
+          - script: npm ci
+            displayName: Install dependencies
+
+          - script: npm run lint
+            displayName: Run linter
+
+  # ---------------------------------------------------------------------------
+  # Stage 2: Type Check
+  # ---------------------------------------------------------------------------
+  - stage: TypeCheck
+    displayName: Type Check
+    dependsOn: []
+    jobs:
+      - job: TypeCheckJob
+        displayName: Run Type Check
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            displayName: Setup Node.js
+            inputs:
+              versionSpec: '20.x'
+
+          - script: npm ci
+            displayName: Install dependencies
+
+          - script: npx tsc --noEmit
+            displayName: Run type check
+
+  # ---------------------------------------------------------------------------
+  # Stage 3: Test and Coverage
+  # ---------------------------------------------------------------------------
+  - stage: TestCoverage
+    displayName: Test and Coverage
+    dependsOn: []
+    jobs:
+      - job: TestJob
+        displayName: Run Tests with Coverage
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            displayName: Setup Node.js
+            inputs:
+              versionSpec: '20.x'
+
+          - script: npm ci
+            displayName: Install dependencies
+
+          # ---------------------------------------------------------------
+          # Run tests with JUnit and Cobertura output
+          # ---------------------------------------------------------------
+          - script: npm run test:ci
+            displayName: Run tests with coverage
+
+          # ---------------------------------------------------------------
+          # Publish JUnit test results
+          # ---------------------------------------------------------------
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '**/junit.xml'
+              mergeTestResults: true
+              testRunTitle: Unit Tests
+
+          # ---------------------------------------------------------------
+          # Publish Cobertura code coverage
+          # ---------------------------------------------------------------
+          - task: PublishCodeCoverageResults@2
+            displayName: Publish code coverage
+            condition: always()
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: $(Build.SourcesDirectory)/coverage/cobertura-coverage.xml
+
+          # ---------------------------------------------------------------
+          # Coverage threshold check
+          # ---------------------------------------------------------------
+          - script: |
+              COVERAGE_FILE="coverage/coverage-summary.json"
+              if [ ! -f "$COVERAGE_FILE" ]; then
+                echo "##vso[task.logissue type=warning]Coverage summary not found at $COVERAGE_FILE"
+                exit 0
+              fi
+
+              TOTAL_PCT=$(jq '.total.lines.pct' "$COVERAGE_FILE")
+              echo "Line coverage: ${TOTAL_PCT}%"
+
+              BELOW=$(echo "$TOTAL_PCT < $(COVERAGE_THRESHOLD)" | bc -l)
+              if [ "$BELOW" -eq 1 ]; then
+                echo "##vso[task.logissue type=error]Line coverage ${TOTAL_PCT}% is below threshold $(COVERAGE_THRESHOLD)%"
+                exit 1
+              fi
+            displayName: Coverage threshold check
+
+          # ---------------------------------------------------------------
+          # Convert coverage findings to SARIF
+          # ---------------------------------------------------------------
+          - script: |
+              COVERAGE_FILE="coverage/coverage-summary.json"
+              SARIF_FILE="coverage-results.sarif"
+
+              cat > convert-coverage.js << 'SCRIPT'
+              const fs = require('fs');
+              const coverageFile = process.argv[2];
+              const threshold = parseInt(process.argv[3], 10);
+              const sarifFile = process.argv[4];
+
+              if (!fs.existsSync(coverageFile)) {
+                console.log('No coverage file found, skipping SARIF conversion');
+                process.exit(0);
+              }
+
+              const coverage = JSON.parse(fs.readFileSync(coverageFile, 'utf8'));
+              const results = [];
+              const rules = [
+                {
+                  id: 'coverage-threshold-violation',
+                  shortDescription: { text: 'File coverage below threshold' },
+                  fullDescription: { text: `Line coverage is below the ${threshold}% threshold` },
+                  help: {
+                    text: `Increase test coverage to at least ${threshold}%`,
+                    markdown: `Increase test coverage to at least **${threshold}%** by adding unit tests for uncovered code paths.`
+                  },
+                  defaultConfiguration: { level: 'warning' },
+                  properties: { tags: ['code-quality', 'coverage'] }
+                },
+                {
+                  id: 'uncovered-function',
+                  shortDescription: { text: 'Function has zero coverage' },
+                  fullDescription: { text: 'Function is not covered by any test' },
+                  help: {
+                    text: 'Add tests for this function',
+                    markdown: 'Add **unit tests** covering happy path and error cases for this function.'
+                  },
+                  defaultConfiguration: { level: 'warning' },
+                  properties: { tags: ['code-quality', 'coverage'] }
+                }
+              ];
+
+              for (const [filePath, data] of Object.entries(coverage)) {
+                if (filePath === 'total') continue;
+                if (data.lines && data.lines.pct < threshold) {
+                  results.push({
+                    ruleId: 'coverage-threshold-violation',
+                    level: 'warning',
+                    message: { text: `Line coverage is ${data.lines.pct}% (threshold: ${threshold}%)` },
+                    locations: [{
+                      physicalLocation: {
+                        artifactLocation: { uri: filePath.replace(/^\//, '') },
+                        region: { startLine: 1 }
+                      }
+                    }],
+                    partialFingerprints: { primaryLocationLineHash: filePath }
+                  });
+                }
+              }
+
+              const sarif = {
+                '$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json',
+                version: '2.1.0',
+                runs: [{
+                  tool: { driver: { name: 'coverage-analyzer', rules } },
+                  results,
+                  automationDetails: { id: 'code-quality/coverage/' }
+                }]
+              };
+
+              fs.writeFileSync(sarifFile, JSON.stringify(sarif, null, 2));
+              console.log(`Wrote ${results.length} findings to ${sarifFile}`);
+              SCRIPT
+
+              node convert-coverage.js "$COVERAGE_FILE" "$(COVERAGE_THRESHOLD)" "$SARIF_FILE"
+            displayName: Convert coverage to SARIF
+            condition: always()
+
+          # ---------------------------------------------------------------
+          # Publish coverage SARIF to ADO Advanced Security
+          # ---------------------------------------------------------------
+          - task: AdvancedSecurity-Publish@1
+            displayName: Publish Coverage SARIF
+            condition: always()
+            inputs:
+              sarifFile: $(Build.SourcesDirectory)/coverage-results.sarif
