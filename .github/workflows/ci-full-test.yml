@@ -1,3 +1,14 @@
+# ============================================================================
+# CI Full Test Workflow
+# ============================================================================
+# This workflow validates the framework on every push and pull request:
+#   - Agent validation: structural checks, cross-reference verification,
+#     and domain-specific rule enforcement for all .agent.md,
+#     .instructions.md, .prompt.md, and SKILL.md files.
+#   - Sample app tests: lint, type-check, and Jest test suite.
+#
+# Results are uploaded as SARIF to the GitHub Security tab.
+# ============================================================================
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: CI Full Test
 

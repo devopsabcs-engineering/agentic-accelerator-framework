@@ -1,3 +1,14 @@
+# ============================================================================
+# APM Security Scan Workflow
+# ============================================================================
+# This workflow audits agent configuration files (agents, instructions,
+# prompts, skills) for prompt injection, data exfiltration directives, and
+# supply chain manipulation. It runs on pull requests that modify any agent
+# configuration file.
+#
+# Findings are uploaded as SARIF to the GitHub Security tab under the
+# "apm-security/" category.
+# ============================================================================
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: APM Security Scan
 

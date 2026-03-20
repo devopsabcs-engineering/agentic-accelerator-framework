@@ -1,3 +1,13 @@
+# ============================================================================
+# Deploy Agent Config to .github-private
+# ============================================================================
+# Syncs agent configuration files from this repository to the org-wide
+# .github-private repository for centralized distribution. Runs on push
+# to main when agent files change, or can be triggered manually.
+#
+# The deployment verifies file integrity using SHA-256 hashes and posts
+# a summary to the workflow run.
+# ============================================================================
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Deploy Agent Config to .github-private
 

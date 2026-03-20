@@ -1,3 +1,22 @@
+# ============================================================================
+# FinOps Cost Gate Workflow
+# ============================================================================
+# This workflow estimates the monthly cloud cost of infrastructure changes
+# using Infracost. It runs on pull requests that modify Terraform (.tf),
+# Bicep (.bicep), or ARM template (.json) files.
+#
+# How it works:
+#   1. Generates a cost baseline from the target branch.
+#   2. Computes the cost diff introduced by the pull request.
+#   3. Posts a cost summary comment on the PR.
+#   4. Converts the cost report to SARIF and uploads it to the GitHub
+#      Security tab under the "finops-finding/" category.
+#   5. Fails the workflow if estimated cost exceeds the monthly budget.
+#
+# Prerequisites:
+#   - Set the INFRACOST_API_KEY secret in your repository settings.
+#   - Optionally set the FINOPS_MONTHLY_BUDGET variable (defaults to $500).
+# ============================================================================
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: FinOps Cost Gate
 

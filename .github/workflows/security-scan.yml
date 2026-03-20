@@ -1,3 +1,20 @@
+# ============================================================================
+# Security Scan Workflow
+# ============================================================================
+# This workflow runs multiple security scanning tools against the codebase:
+#   - SCA (Software Composition Analysis): checks dependencies for known
+#     vulnerabilities and generates an SBOM (Software Bill of Materials).
+#   - SAST (Static Application Security Testing): uses CodeQL to find
+#     security bugs in JavaScript/TypeScript source code.
+#   - IaC (Infrastructure as Code): scans Bicep/Terraform templates for
+#     misconfigurations using Checkov, Trivy, and Terrascan.
+#   - Container: scans Docker images for known CVEs using Trivy.
+#   - DAST (Dynamic Application Security Testing): runs a ZAP baseline scan
+#     against a live URL (when configured).
+#
+# All findings are uploaded as SARIF to the GitHub Security tab so you can
+# view them under Security > Code scanning alerts.
+# ============================================================================
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Security Scan
 

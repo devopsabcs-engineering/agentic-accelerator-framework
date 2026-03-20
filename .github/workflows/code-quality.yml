@@ -1,3 +1,15 @@
+# ============================================================================
+# Code Quality Workflow
+# ============================================================================
+# This workflow enforces code quality standards on every pull request:
+#   - Lint: runs ESLint to catch style and correctness issues.
+#   - Type Check: runs the TypeScript compiler in check-only mode.
+#   - Test & Coverage: runs Jest tests and compares line coverage against the
+#     configured threshold. Low-coverage files are reported as SARIF findings.
+#
+# The coverage SARIF output appears in the GitHub Security tab under the
+# "code-quality/coverage/" category.
+# ============================================================================
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Code Quality
 
