@@ -102,8 +102,8 @@ test-results/
 .env.local
 .env.*.local
 
-# Copilot tracking (keep structure, ignore temp)
-.copilot-tracking/**/temp/
+# Copilot tracking
+.copilot-tracking/
 
 # Validation script outputs (generated artifacts)
 validation-results.json
