@@ -128,12 +128,14 @@ jobs:
             const sourceFile = urlToSourceFile(page.url || "${{ matrix.scan-url.url }}");
             for (const violation of (page.violations || [])) {
               if (!rulesMap.has(violation.id)) {
+                const allTags = ["accessibility"].concat(violation.tags || []).slice(0, 10);
                 rulesMap.set(violation.id, {
                   id: violation.id,
                   shortDescription: { text: violation.help || violation.id },
                   fullDescription: { text: violation.description || "" },
-                  help: { text: violation.help || "", markdown: violation.helpUrl ? `${violation.help || ""}. [Learn more](${violation.helpUrl})` : violation.help || "" },
-                  properties: { tags: ["accessibility"].concat(violation.tags || []) }
+                  helpUri: violation.helpUrl || undefined,
+                  help: { text: violation.helpUrl ? `${violation.help || ""}. Learn more: ${violation.helpUrl}` : (violation.help || ""), markdown: violation.helpUrl ? `${violation.help || ""}. [Learn more](${violation.helpUrl})` : (violation.help || "") },
+                  properties: { tags: allTags }
                 });
               }
               const weight = impactToWeight[violation.impact] || 1;
