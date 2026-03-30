@@ -138,6 +138,7 @@ samples/
 * [Centralized Governance](docs/centralized-governance.md) — Dual-platform dashboards and Defender for Cloud integration
 * [Prompt File Security](docs/prompt-file-security.md) — Threat model and APM defense for agent configuration files
 * [Implementation Roadmap](docs/implementation-roadmap.md) — Phased rollout plan
+* [Domain Parity and Contribution Guide](docs/domain-parity-and-contribution.md) — Cross-domain feature parity comparison and guide for contributing new domains
 
 ## Standards
 
