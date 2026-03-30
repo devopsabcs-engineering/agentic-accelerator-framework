@@ -147,6 +147,12 @@ samples/
 * **OWASP LLM Top 10**: AI/LLM security risks
 * **CIS Azure Benchmarks, NIST 800-53, PCI-DSS**: Compliance frameworks
 
+## Workshops
+
+* [Agentic Accelerator Workshop](https://devopsabcs-engineering.github.io/agentic-accelerator-workshop/) — Hands-on workshop for building and deploying custom GitHub Copilot agents with the Agentic Accelerator Framework
+* [Accessibility Scan Workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) — Workshop for WCAG 2.2 Level AA accessibility scanning and remediation using custom agents
+* [FinOps Scan Workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) — Workshop for Azure cost optimization and FinOps governance using custom agents
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
