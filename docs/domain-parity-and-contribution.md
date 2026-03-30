@@ -60,7 +60,7 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Scanner deployment** | Azure App Service (Docker container) | GitHub Actions only (no deployed scanner app) |
 | **Open source tools** | axe-core 4.11, IBM Equal Access 4.0 | PSRule for Azure, Checkov, Cloud Custodian, Infracost |
 | **Custom tools** | 5 custom Playwright checks, CLI, SARIF generator, scoring engine, PDF/HTML reports | 2 Python SARIF converters, 4 Cloud Custodian policies |
-| **SARIF generation** | Native (built-in SARIF v2.1.0 generator) | Mixed: PSRule and Checkov native; Cloud Custodian and Infracost via Python converters |
+| **SARIF generation** | Native (built-in SARIF v2.1.0 generator) | Mixed: PSRule and Checkov native; Cloud Custodian and Infracost via 2 Python converters |
 | **SARIF upload** | `codeql-action/upload-sarif@v4` (same-repo) | Cross-repo upload via GitHub REST API (`gh api`) |
 | **Copilot agents** | 2 (a11y-detector, a11y-resolver) | 5 (CostAnalysis, FinOpsGovernance, CostAnomalyDetector, CostOptimizer, DeploymentCostGate) |
 | **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (finops-scan, finops-fix) |
@@ -91,6 +91,25 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Contributing guide** | Yes (lab authoring style guide) | Yes (lab authoring style guide) |
 | **License** | MIT | MIT |
 
+The Accessibility workshop includes a workshop-specific Copilot agent that provides guided assistance during lab exercises, along with governance instructions that enforce coding standards within the workshop codebase. The FinOps workshop does not have equivalent Copilot artifacts. Adding a workshop agent and governance instructions to the FinOps workshop would bring AI-assisted lab guidance to parity. See [Gaps Identified](#gaps-identified) for remediation details.
+
+#### Screenshot Script Comparison
+
+Both workshops include automated screenshot capture scripts with comparable capabilities:
+
+| Capability | Accessibility Workshop | FinOps Workshop |
+|------------|----------------------|------------------|
+| Script size | ~900+ lines | ~710+ lines |
+| Target screenshots | 47 PNGs | 46 PNGs |
+| Architecture | 3-phase (offline, app-dependent, GitHub web UI) | Multi-phase |
+| Charm freeze support | Yes | Yes |
+| Playwright helpers | Separate `playwright-helpers.js` with 3 functions | Inline Playwright usage |
+| Lab and phase filtering | Yes | Yes |
+| Theme and font customization | Yes | Yes |
+| Environment modes | local/azure | local/azure |
+
+New domains should follow this pattern and create a `capture-screenshots.ps1` script covering all labs, with phase filtering and both local and Azure environment support.
+
 ### Power BI Report (`advsec-pbi-report-ado`)
 
 | Aspect | Current State | Gap |
@@ -113,6 +132,34 @@ Making Azure DevOps a first-class citizen means every GitHub Actions workflow ha
 | **Code Quality** | `code-quality.yml` | `quality-pipeline.yml` (sample) | Sample only |
 | **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | None | Not implemented |
 | **APM Security** | `apm-security.yml` | Inline pattern in docs | Not implemented |
+
+## Gaps Identified
+
+Research across both domains reveals four specific parity gaps where FinOps does not match Accessibility capabilities.
+
+### Gap 1: FinOps Workshop Has No Copilot Artifacts
+
+The Accessibility workshop repository includes a workshop-specific agent and governance instructions. The FinOps workshop repository contains zero Copilot artifacts: no agents, prompts, instructions, or skills.
+
+To close this gap, create a FinOps workshop agent in `.github/agents/` and add governance instructions to `.github/instructions/` in the `finops-scan-workshop` repository, following the patterns established in the Accessibility workshop.
+
+### Gap 2: FinOps Demo App Has No ADO Pipelines
+
+The Accessibility demo app repository includes 8 Azure DevOps pipelines covering CI/CD, deployment orchestration, scan variants, and reusable templates. The FinOps demo app repository has none.
+
+To close this gap, create equivalent ADO pipelines in `.azuredevops/pipelines/` in the `finops-scan-demo-app` repository. Reference the Accessibility pipeline templates for structure and task mapping.
+
+### Gap 3: No Domain-Specific Power BI Pages Exist
+
+The Power BI report (`advsec-pbi-report-ado`) contains only 3 security-focused pages (Overview, Alerts by Type, Trend Analysis). Neither Accessibility nor FinOps has domain-specific pages in the report, though FinOps has detailed design specifications for 6 dashboard pages documented in its `docs/` directory.
+
+To close this gap, add domain-specific pages to the Power BI report. Start with FinOps pages because full design specifications already exist, then create equivalent pages for Accessibility.
+
+### Gap 4: SARIF Generation Approach Differs Between Domains
+
+The Accessibility scanner generates SARIF v2.1.0 natively through a built-in TypeScript generator (`src/lib/report/sarif-generator.ts`). The FinOps domain requires 2 Python converter scripts (`custodian-to-sarif.py` and `infracost-to-sarif.py`) because Cloud Custodian and Infracost do not produce SARIF natively. PSRule and Checkov produce SARIF natively without converters.
+
+This is a design difference driven by tool capabilities rather than a gap requiring remediation. New domains should evaluate SARIF capabilities during tool selection (Step 2 of the contribution guide) and document any converters needed.
 
 ## Contributing a New Domain
 
@@ -255,9 +302,17 @@ Copy the agent patterns from `agentic-accelerator-framework/agents/`:
 
 * **code-quality-scan/SKILL.md** — Domain knowledge package covering supported tools, coverage formats (lcov, cobertura, JaCoCo XML, Go cover), SARIF mapping rules, and multi-language testing patterns
 
+Skills can exist in two locations: the domain's demo-app repository (for scanner-specific knowledge, as in the FinOps `finops-scan` skill) and the framework repository (for cross-domain reference, as in the `a11y-scan` and `security-scan` skills in `agentic-accelerator-framework/skills/`). Create the skill in the demo-app repo first, then consider adding a corresponding skill to the framework repo if the knowledge benefits users working across domains.
+
 ### Step 6: Implement SARIF Integration
 
-All findings must output SARIF v2.1.0 for GitHub Security Overview and ADO Advanced Security:
+All findings must output SARIF v2.1.0 for GitHub Security Overview and ADO Advanced Security. Each SARIF file must include:
+
+* `partialFingerprints` for deduplication across runs
+* `automationDetails.id` set to the domain category prefix (e.g., `code-quality/coverage/`)
+* `runs[].tool.driver.name` populated with the scanner or agent name
+* `runs[].tool.driver.rules[]` with unique `ruleId` values per finding type
+* `runs[].results[].level` mapped from severity (CRITICAL/HIGH → `error`, MEDIUM → `warning`, LOW → `note`)
 
 ```text
 SARIF Flow:
@@ -377,6 +432,8 @@ Use this checklist when contributing a new domain:
 
 - [ ] Create repository `{domain}-scan-demo-app`
 - [ ] Add 5 sample apps with intentional violations in different languages
+- [ ] Add Dockerfile per sample app
+- [ ] Add `start-local.ps1` and `stop-local.ps1` per sample app
 - [ ] Implement or integrate 3–5 open source scanning tools
 - [ ] Write SARIF converters for tools without native SARIF output
 - [ ] Create Copilot agents (detector + resolver pattern)
@@ -386,6 +443,7 @@ Use this checklist when contributing a new domain:
 - [ ] Create `bootstrap-demo-apps.ps1` (repo creation, OIDC, secrets)
 - [ ] Create `setup-oidc.ps1` (Azure AD federation)
 - [ ] Create GitHub Actions workflows (ci, scan, gate, deploy-all)
+- [ ] Create reusable GitHub Action (composite action) for external CI use
 - [ ] Create Azure DevOps pipelines (ci-cd, scan, deploy-all, templates)
 - [ ] Document Power BI data model and dashboard design
 - [ ] Document Power Query M expressions for data ingestion
@@ -400,6 +458,9 @@ Use this checklist when contributing a new domain:
 - [ ] Configure Jekyll for GitHub Pages
 - [ ] Write contributing guide with lab authoring style
 - [ ] Define half-day and full-day delivery tiers
+- [ ] Create workshop Copilot agent for lab guidance
+- [ ] Create workshop governance instructions
+- [ ] Create Playwright helpers script for browser automation
 
 ### Framework Integration
 
