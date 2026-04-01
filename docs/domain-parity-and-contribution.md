@@ -78,9 +78,10 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | Feature | Accessibility (`accessibility-scan-workshop`) | FinOps (`finops-scan-workshop`) |
 |---------|------------------------------------------------|----------------------------------|
 | **Labs** | 8 labs (Lab 00–07) | 8 labs (Lab 00–07) |
+| **Platform-specific labs** | GitHub only (Lab 06, Lab 07) | GitHub only (Lab 06, Lab 07) |
 | **Full-day duration** | ~6.5 hours | ~7.25 hours |
 | **Half-day duration** | ~3 hours (Labs 00, 01, 02, 03, 05) | ~3.5 hours (Labs 00, 01, 02, 03, 06) |
-| **Delivery tiers** | Half-day and full-day | Half-day and full-day |
+| **Delivery tiers** | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) |
 | **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | No |
 | **Copilot artifacts** | Workshop agent + governance instructions | None |
 | **Screenshot script** | `capture-screenshots.ps1` (~900+ lines, 47 PNGs, 3 phases) | `capture-screenshots.ps1` (~710+ lines, 46 PNGs) |
@@ -121,21 +122,272 @@ New domains should follow this pattern and create a `capture-screenshots.ps1` sc
 | **Data source** | ADO Advanced Security REST API (`advsec.dev.azure.com`) | Non-security domains need pipeline artifact ingestion (SARIF/lcov) |
 | **Format** | PBIP (Power BI Project) — extensible, code-based | Supports adding pages as folder structures |
 
+The target architecture transitions from a single centralized report to per-domain PBIPs. Each domain's demo-app repo will own a PBIP in `power-bi/`, with data sourced from ADLS Gen 2 via OAuth2 (Organizational Account) instead of the ADO REST API.
+
+| Aspect | Current (Centralized) | Target (Per-Domain PBIP) |
+|--------|----------------------|-------------------------|
+| **Ownership** | Single `advsec-pbi-report-ado` repo | Each `{domain}-scan-demo-app/power-bi/` |
+| **Data source** | ADO Advanced Security REST API | ADLS Gen 2 + OAuth2 (Organizational Account) |
+| **Schema** | Flat query results | Star schema: `Fact_Findings` + 6 dimension tables |
+| **Format** | PBIP (centralized) | PBIP per domain (code-based, Git-friendly) |
+
+See [Desired Features to Compare](#desired-features-to-compare) for full architecture details.
+
 ### ADO First-Class Citizen Status
 
-Making Azure DevOps a first-class citizen means every GitHub Actions workflow has an equivalent ADO YAML pipeline. Current status:
+Making Azure DevOps a first-class citizen means every GitHub Actions workflow has an equivalent ADO YAML pipeline, every workshop includes ADO-specific labs, each domain owns a Power BI PBIP, and SARIF results flow to ADLS Gen 2. Current status across all parity dimensions:
 
-| Domain | GitHub Actions | ADO Pipelines | ADO Pipeline Status |
-|--------|---------------|---------------|---------------------|
-| **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | Implemented |
-| **Accessibility** | `accessibility-scan.yml` | `accessibility-pipeline.yml` (sample) + 8 full pipelines in demo-app | Implemented |
-| **Code Quality** | `code-quality.yml` | `quality-pipeline.yml` (sample) | Sample only |
-| **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | None | Not implemented |
-| **APM Security** | `apm-security.yml` | Inline pattern in docs | Not implemented |
+| Domain | GH Actions | ADO Pipelines | ADO Workshop Labs | GH Workshop Labs | PBIP | SARIF → ADLS |
+|--------|-----------|---------------|-------------------|------------------|------|-------------|
+| **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | No | Yes | Partial (3 pages) | No |
+| **Accessibility** | `accessibility-scan.yml` (5 workflows) | 8 full pipelines + sample | No | Yes | No | No |
+| **Code Quality** | `code-quality.yml` | `quality-pipeline.yml` (sample) | No | Yes | No | No |
+| **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | None | No | Yes | No | No |
+| **APM Security** | `apm-security.yml` | Inline pattern in docs | No | No | No | No |
+
+## Desired Features to Compare
+
+Three feature areas remain before the framework achieves full domain parity: dual-platform workshops that cover both GitHub and ADO, consistent feature parity between ADO and GitHub across every domain, and domain-specific Power BI PBIPs sourced from ADLS Gen 2. Each area is documented below with implementation patterns, target architecture, and domain-specific details.
+
+### Dual-Platform Workshops (GitHub + ADO)
+
+Each domain keeps one `{domain}-scan-workshop` repo with suffixed lab files for platform-specific content. Labs 00 through 05 are platform-agnostic and cover tool exploration, scanning, and SARIF fundamentals. Labs 06 and 07 have GitHub and ADO variants that teach platform-specific SARIF upload and CI/CD pipeline authoring.
+
+```text
+{domain}-scan-workshop/
+├── labs/
+│   ├── lab-00-setup.md                    ← Platform-agnostic (30 min)
+│   ├── lab-01-explore-violations.md       ← Platform-agnostic (25 min)
+│   ├── lab-02-{tool-1}.md                 ← Platform-agnostic (35 min)
+│   ├── lab-03-{tool-2}.md                 ← Platform-agnostic (30 min)
+│   ├── lab-04-{tool-3}.md                 ← Platform-agnostic (35 min)
+│   ├── lab-05-{tool-4}.md                 ← Platform-agnostic (30 min)
+│   ├── lab-06-github-sarif-security.md    ← GitHub Security Tab (30 min)
+│   ├── lab-06-ado-sarif-advsec.md         ← ADO Advanced Security (35 min)
+│   ├── lab-07-github-actions.md           ← GitHub Actions (45 min)
+│   └── lab-07-ado-pipelines.md            ← ADO YAML Pipelines (50 min)
+```
+
+#### Delivery Tiers
+
+| Tier | Platform | Labs | Duration |
+|------|----------|------|----------|
+| Half-day (GitHub) | GitHub | 00, 01, 02, 03, 06-github | ~3 hours |
+| Half-day (ADO) | ADO | 00, 01, 02, 03, 06-ado | ~3 hours |
+| Full-day (GitHub) | GitHub | 00–05, 06-github, 07-github | ~6.5 hours |
+| Full-day (ADO) | ADO | 00–05, 06-ado, 07-ado | ~7 hours |
+| Full-day (Dual) | Both | 00–05, 06-github, 06-ado, 07-github, 07-ado | ~8.5 hours |
+
+#### Lab 06-ado: ADO Advanced Security (35 min)
+
+- Review SARIF output from earlier labs
+- Enable GHAzDO at project and repo level
+- Create a minimal ADO YAML pipeline with `AdvancedSecurity-Publish@1`
+- Run the pipeline and observe execution
+- View findings in the ADO Advanced Security Overview
+- Compare with the GitHub Security Tab
+
+#### Lab 07-ado: ADO YAML Pipelines (50 min)
+
+- ADO YAML pipeline basics (trigger, pr, pool, stages/jobs/steps)
+- Multi-stage scan pipeline
+- Variable groups for centralized configuration
+- Schedule triggers with cron
+- Environment approvals and deployment gates
+- Pipeline templates for reuse
+- `AB#` work item linking
+
+Labs 00 through 05 represent roughly 80% of workshop content and are fully platform-agnostic. The single-repo approach with suffixed lab files avoids duplicating content across 10 additional repositories while still supporting independent GitHub and ADO delivery tracks.
+
+### ADO vs GitHub Feature Parity
+
+#### Per-Domain Parity Matrix (Current State)
+
+| Domain | GH Workflows | ADO Pipelines (demo-app) | ADO Pipeline (framework sample) | GH Workshop Labs | ADO Workshop Labs | GH SARIF Upload | ADO SARIF Upload | PBIP |
+|--------|--------------|--------------------------|--------------------------------|------------------|-------------------|-----------------|------------------|------|
+| Security | Yes | N/A | Yes | Yes | No | Yes | Yes | Partial (3 pages) |
+| Accessibility | Yes (5) | Yes (8) | Yes | Yes | No | Yes | Yes | No |
+| Code Quality | Yes | No | Yes (sample) | Yes | No | Yes | No | No |
+| FinOps | Yes (2) | No | No | Yes | No | Yes | No | No |
+
+#### Target State Mapping
+
+| Artifact | GitHub | ADO |
+|----------|--------|-----|
+| CI/CD pipelines | GitHub Actions workflows | ADO YAML pipelines |
+| SARIF upload | `codeql-action/upload-sarif@v4` | `AdvancedSecurity-Publish@1` |
+| Security dashboard | GitHub Security Tab | ADO Advanced Security Overview |
+| Workshop Lab 06 | `lab-06-github-sarif-security.md` | `lab-06-ado-sarif-advsec.md` |
+| Workshop Lab 07 | `lab-07-github-actions.md` | `lab-07-ado-pipelines.md` |
+| Bootstrap scripts | `bootstrap-demo-apps.ps1` | `bootstrap-ado-projects.ps1` |
+| SARIF to data lake | GH Actions → ADLS Gen 2 | ADO pipeline → ADLS Gen 2 |
+| Power BI PBIP | ADLS Gen 2 + OAuth2 | ADLS Gen 2 + OAuth2 (same) |
+
+See [docs/azure-devops-pipelines.md](azure-devops-pipelines.md) for the full GHAzDO task mapping between GitHub Actions and ADO YAML pipeline tasks.
+
+### Domain-Specific Power BI PBIP with ADLS Gen 2 + OAuth2
+
+Each domain's demo-app repo owns a PBIP in `power-bi/` with a star schema semantic model sourced from ADLS Gen 2 via OAuth2 (Organizational Account).
+
+#### PBIP Folder Structure
+
+```text
+{domain}-scan-demo-app/
+└── power-bi/
+    ├── {Domain}Alerts.pbip
+    ├── {Domain}Alerts.Report/
+    │   ├── .platform
+    │   ├── definition.pbir
+    │   └── definition/
+    │       ├── report.json
+    │       ├── version.json
+    │       └── pages/
+    │           ├── pages.json
+    │           ├── overview/
+    │           └── {domain-specific-pages}/
+    └── {Domain}Alerts.SemanticModel/
+        ├── .platform
+        ├── definition.pbism
+        └── definition/
+            ├── database.tmdl
+            ├── model.tmdl
+            ├── relationships.tmdl
+            ├── expressions.tmdl
+            └── tables/
+                ├── Fact_Findings.tmdl
+                ├── Dim_Date.tmdl
+                ├── Dim_Severity.tmdl
+                ├── Dim_Tool.tmdl
+                ├── Dim_Rule.tmdl
+                └── Dim_Repository.tmdl
+```
+
+#### Data Flow
+
+```text
+CI/CD Pipelines (GH Actions / ADO YAML)
+  → Scan tools produce SARIF v2.1.0
+  → Upload SARIF to ADLS Gen 2 (az storage blob upload-batch --auth-mode login)
+  → ADLS Gen 2 (sarif-results/{domain}/{org}/{repo}/{date}/*.sarif)
+  → Power BI PBIP connects via AzureStorage.DataLake() + OAuth2
+  → Power Query M parses SARIF JSON → star schema
+  → Domain-specific report pages
+```
+
+#### ADLS Gen 2 Container Layout
+
+```text
+sarif-results/
+  accessibility/{org}/{repo}/{date}/
+  finops/{org}/{repo}/{date}/
+  security/{org}/{repo}/{date}/
+  code-quality/{org}/{repo}/{date}/
+```
+
+#### OAuth2 Requirements
+
+| Property | Value |
+|----------|-------|
+| Method | Organizational Account (Entra ID / OAuth2) |
+| RBAC required | `Storage Blob Data Reader` (minimum) |
+| Cross-tenant | Not supported |
+| URL format | `https://<accountname>.dfs.core.windows.net/<container>` |
+| Subfolder in URL | Not supported; filter in M code |
+
+#### Domain-Specific Report Pages
+
+| Domain | Pages |
+|--------|-------|
+| Accessibility | Overview, WCAG Criteria, Engine Comparison, Repository Detail, Remediation Tracking |
+| FinOps | Cost Overview, Budget Compliance, Optimization Opportunities, Tagging Compliance, Tool Findings, Deployment Cost Gate |
+| Security | Vulnerability Overview, CWE Distribution, Dependency Alerts, IaC Findings, Trend Analysis |
+| Code Quality | Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking |
+
+#### CI/CD SARIF Upload to ADLS Gen 2
+
+GitHub Actions:
+
+```yaml
+- name: Upload SARIF to ADLS Gen 2
+  uses: azure/cli@v2
+  with:
+    inlineScript: |
+      DOMAIN="accessibility"
+      DATE=$(date +%Y-%m-%d)
+      REPO="${{ github.repository }}"
+      az storage blob upload-batch \
+        --account-name scanresults \
+        --destination sarif-results \
+        --source ./sarif-output/ \
+        --destination-path "${DOMAIN}/${REPO}/${DATE}/" \
+        --auth-mode login \
+        --overwrite
+```
+
+ADO Pipelines:
+
+```yaml
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: 'service-connection'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      DOMAIN="accessibility"
+      DATE=$(date +%Y-%m-%d)
+      REPO="$(Build.Repository.Name)"
+      az storage blob upload-batch \
+        --account-name scanresults \
+        --destination sarif-results \
+        --source $(Build.ArtifactStagingDirectory)/sarif/ \
+        --destination-path "${DOMAIN}/${REPO}/${DATE}/" \
+        --auth-mode login \
+        --overwrite
+```
+
+#### Power Query M Expression for SARIF Ingestion
+
+```m
+let
+    Source = AzureStorage.DataLake(
+        ADLSEndpoint,
+        [HierarchicalNavigation = true]
+    ),
+    FilterDomain = Table.SelectRows(Source, each
+        Text.StartsWith([Folder Path], DomainFilter & "/") and
+        Text.EndsWith([Name], ".sarif")
+    ),
+    AddParsedContent = Table.AddColumn(FilterDomain, "ParsedSARIF", each Json.Document([Content])),
+    ExpandRuns = Table.ExpandListColumn(
+        Table.AddColumn(AddParsedContent, "Runs", each [ParsedSARIF][runs]),
+        "Runs"
+    ),
+    ExpandRunDetails = Table.ExpandRecordColumn(ExpandRuns, "Runs", {"tool", "results", "automationDetails"}),
+    AddToolName = Table.AddColumn(ExpandRunDetails, "ToolName", each [tool][driver][name]),
+    ExpandResults = Table.ExpandListColumn(AddToolName, "results"),
+    ExpandFinding = Table.ExpandRecordColumn(ExpandResults, "results",
+        {"ruleId", "level", "message", "locations", "partialFingerprints"}
+    ),
+    AddMessage = Table.AddColumn(ExpandFinding, "MessageText", each [message][text]),
+    AddFilePath = Table.AddColumn(AddMessage, "FilePath", each
+        try [locations]{0}[physicalLocation][artifactLocation][uri] otherwise null
+    ),
+    AddLineNumber = Table.AddColumn(AddFilePath, "LineNumber", each
+        try [locations]{0}[physicalLocation][region][startLine] otherwise null
+    ),
+    AddSeverity = Table.AddColumn(AddLineNumber, "Severity", each
+        if [level] = "error" then "Critical"
+        else if [level] = "warning" then "Medium"
+        else if [level] = "note" then "Low"
+        else "Info"
+    )
+in
+    AddSeverity
+```
 
 ## Gaps Identified
 
-Research across both domains reveals four specific parity gaps where FinOps does not match Accessibility capabilities.
+Research across both domains reveals six parity gaps spanning domain-level parity, dual-platform workshops, and Power BI PBIP coverage.
 
 ### Gap 1: FinOps Workshop Has No Copilot Artifacts
 
@@ -160,6 +412,18 @@ To close this gap, add domain-specific pages to the Power BI report. Start with 
 The Accessibility scanner generates SARIF v2.1.0 natively through a built-in TypeScript generator (`src/lib/report/sarif-generator.ts`). The FinOps domain requires 2 Python converter scripts (`custodian-to-sarif.py` and `infracost-to-sarif.py`) because Cloud Custodian and Infracost do not produce SARIF natively. PSRule and Checkov produce SARIF natively without converters.
 
 This is a design difference driven by tool capabilities rather than a gap requiring remediation. New domains should evaluate SARIF capabilities during tool selection (Step 2 of the contribution guide) and document any converters needed.
+
+### Gap 5: No ADO Workshop Labs
+
+All workshop labs for Lab 06 (SARIF output and Security Tab) and Lab 07 (GitHub Actions pipelines) are GitHub-only. No ADO-specific lab variants exist for any domain.
+
+To close this gap, create ADO-specific lab files (`lab-06-ado-sarif-advsec.md` and `lab-07-ado-pipelines.md`) in each domain's workshop repository. Follow the dual-platform architecture described in [Desired Features to Compare](#desired-features-to-compare). Labs 00–05 remain platform-agnostic and require no changes.
+
+### Gap 6: No Domain-Specific Power BI PBIPs
+
+No domain currently has a local PBIP in its demo-app repository. The only Power BI content is the centralized `advsec-pbi-report-ado` repository with 3 security pages. Domain-specific PBIPs using ADLS Gen 2 + OAuth2 do not exist.
+
+To close this gap, create a PBIP in `power-bi/` within each domain's demo-app repository following the architecture in [Desired Features to Compare](#desired-features-to-compare). Start with the Accessibility domain because it has the most mature scanning pipeline, then extend to FinOps, Code Quality, and Security.
 
 ## Contributing a New Domain
 
@@ -371,8 +635,10 @@ code-quality-scan-workshop/
 │   ├── lab-03.md               ← Pylint + pytest-cov — Python quality and coverage (30 min)
 │   ├── lab-04.md               ← Checkstyle + JaCoCo — Java quality and coverage (35 min)
 │   ├── lab-05.md               ← dotnet-coverage + coverlet — C# coverage (30 min)
-│   ├── lab-06.md               ← SARIF output and GitHub Security Tab (30 min)
-│   └── lab-07.md               ← GitHub Actions pipelines and coverage gates (45 min)
+│   ├── lab-06-github-sarif-security.md    ← GitHub Security Tab (30 min)
+│   ├── lab-06-ado-sarif-advsec.md         ← ADO Advanced Security (35 min)
+│   ├── lab-07-github-actions.md           ← GitHub Actions (45 min)
+│   └── lab-07-ado-pipelines.md            ← ADO YAML Pipelines (50 min)
 ├── scripts/
 │   └── capture-screenshots.ps1 ← Automated screenshot capture for all labs
 ├── images/lab-00/ through lab-07/
@@ -385,31 +651,39 @@ code-quality-scan-workshop/
 
 Workshop delivery tiers:
 
-| Tier | Labs | Duration | Azure Required |
-|------|------|----------|----------------|
-| Half-day | 00, 01, 02, 03, 06 | ~3 hours | No |
-| Full-day | 00–07 (all) | ~6.5 hours | Yes |
+| Tier | Platform | Labs | Duration | Azure Required |
+|------|----------|------|----------|----------------|
+| Half-day (GitHub) | GitHub | 00, 01, 02, 03, 06-github | ~3 hours | No |
+| Half-day (ADO) | ADO | 00, 01, 02, 03, 06-ado | ~3 hours | No |
+| Full-day (GitHub) | GitHub | 00–05, 06-github, 07-github | ~6.5 hours | Yes |
+| Full-day (ADO) | ADO | 00–05, 06-ado, 07-ado | ~7 hours | Yes |
+| Full-day (Dual) | Both | 00–05, 06-github, 06-ado, 07-github, 07-ado | ~8.5 hours | Yes |
 
-### Step 9: Add Power BI Pages
+Screenshot scripts should support both platforms via a `--platform github|ado` parameter for platform-specific labs.
 
-Add report pages to the [advsec-pbi-report-ado](https://github.com/devopsabcs-engineering/advsec-pbi-report-ado) repository:
+### Step 9: Create Domain-Specific Power BI PBIP
 
-For Code Quality, add these pages:
+Create a `power-bi/` directory in the domain's demo-app repository following the PBIP folder structure documented in [Desired Features to Compare](#desired-features-to-compare).
+
+Key requirements:
+
+* **Semantic model**: Star schema with `Fact_Findings` + 6 dimension tables (Date, Severity, Tool, Rule, Repository, Domain)
+* **Data source**: ADLS Gen 2 via `AzureStorage.DataLake()` with OAuth2 Organizational Account
+* **Domain filter**: Add a domain filter parameter in `expressions.tmdl` to scope SARIF ingestion to `{domain}/`
+* **Report pages**: Create domain-specific pages as documented in the domain-specific pages table in [Desired Features to Compare](#desired-features-to-compare)
+* **CI/CD upload**: Add a pipeline step to upload SARIF to ADLS Gen 2 (both GitHub Actions and ADO YAML)
+* **RBAC**: Assign `Storage Blob Data Reader` on the ADLS Gen 2 container to report consumers
+
+For Code Quality, create these report pages:
 
 | Page | Content |
 |------|---------|
-| Code Quality Overview | Coverage distribution across repos, quality score trends |
+| Quality Overview | Coverage distribution across repos, quality score trends |
 | Coverage by Repository | Per-repo coverage percentages, below-threshold file counts |
 | Complexity Analysis | Cyclomatic complexity distribution, high-complexity function list |
 | Test Generation Tracking | Tests generated vs. coverage improvement correlation |
 
-Data model additions:
-
-* `Fact_QualityFindings` — one row per quality finding (from SARIF via Code Scanning API)
-* `Dim_QualityRule` — rule types (coverage-gap, complexity, duplication, lint-violation)
-* `Dim_Language` — programming language dimension
-
-Document Power Query M expressions for ingesting Code Quality SARIF from the GitHub Code Scanning API in `docs/power-query-quality-alerts.md`.
+The legacy centralized report (`advsec-pbi-report-ado`) remains available for security domain visualization until the per-domain PBIP migration is complete.
 
 ### Step 10: Ensure ADO First-Class Citizenship
 
@@ -448,6 +722,11 @@ Use this checklist when contributing a new domain:
 - [ ] Document Power BI data model and dashboard design
 - [ ] Document Power Query M expressions for data ingestion
 - [ ] Write comprehensive README
+- [ ] Create per-domain Power BI PBIP in `power-bi/` directory
+- [ ] Define TMDL semantic model with star schema (`Fact_Findings` + 6 dimensions)
+- [ ] Configure ADLS Gen 2 connection with OAuth2 in `expressions.tmdl`
+- [ ] Create domain-specific report pages
+- [ ] Add CI/CD pipeline step to upload SARIF to ADLS Gen 2
 
 ### Workshop Repository
 
@@ -461,6 +740,10 @@ Use this checklist when contributing a new domain:
 - [ ] Create workshop Copilot agent for lab guidance
 - [ ] Create workshop governance instructions
 - [ ] Create Playwright helpers script for browser automation
+- [ ] Create ADO-specific lab files (`lab-06-ado-sarif-advsec.md`, `lab-07-ado-pipelines.md`)
+- [ ] Define 5 delivery tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual)
+- [ ] Update `capture-screenshots.ps1` with `--platform` parameter support
+- [ ] Add GitHub Pages platform selection guidance to `index.md`
 
 ### Framework Integration
 
