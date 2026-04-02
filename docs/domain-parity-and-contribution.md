@@ -30,7 +30,11 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 ├── src/                  ← Scanner engine (or converters)
 ├── scripts/
 │   ├── bootstrap-demo-apps.ps1
-│   └── setup-oidc.ps1
+│   ├── bootstrap-demo-apps-ado.ps1  ← ADO project provisioning
+│   ├── setup-oidc.ps1
+│   ├── setup-oidc-ado.ps1           ← ADO WIF federation
+│   └── scan-and-store.ps1           ← Transform scan results for Power BI
+├── power-bi/                 ← Domain-specific Power BI PBIP (or {domain}-pbi-report/)
 └── docs/                 ← Power BI integration docs
 
 {domain}-scan-workshop/
@@ -66,12 +70,15 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (finops-scan, finops-fix) |
 | **Copilot instructions** | 3 (wcag22-rules, a11y-remediation, ado-workflow) | 2 (finops-governance, ado-workflow) |
 | **Copilot skills** | 0 | 1 (finops-scan) |
-| **Bootstrap script** | `bootstrap-demo-apps.ps1` — creates 5 repos, OIDC, secrets | `bootstrap-demo-apps.ps1` — creates 5 repos, OIDC, secrets, Infracost key |
-| **OIDC setup script** | `setup-oidc.ps1` — Azure AD federation for GitHub Actions | `setup-oidc.ps1` — Azure AD federation for 6 repos |
+| **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) |
+| **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) |
+| **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
+| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI |
+| **Power BI PBIP** | `a11y-pbi-report/A11yReport.pbip` (1 page, 7 dimensions) | `power-bi/FinOpsReport.pbip` (1 page, 5 dimensions) |
 | **GitHub Actions** | 5 workflows (ci, deploy, a11y-scan, deploy-all, scan-all) | 4 workflows (finops-scan, finops-cost-gate, deploy-all, teardown-all) |
-| **Azure DevOps pipelines** | 8 pipelines (ci-cd, deploy-all, a11y-scan variants, scan-all, adv-sec-scan, 2 templates) | Not yet implemented |
-| **Power BI docs** | None | 5 docs (data model, dashboard design, Power Query M, Resource Graph, FinOps Toolkit) |
-| **Primary language** | TypeScript 81.8% | PowerShell 41.7%, Bicep 26.4%, Python 24.1% |
+| **Azure DevOps pipelines** | 10 pipelines + 5 templates (ci, ci-cd, deploy, deploy-all, a11y-scan, a11y-scan-advancedsecurity, adv-sec-scan, scan-all, scan-and-store + 5 templates) | 5 pipelines + 2 templates (finops-scan, finops-cost-gate, deploy-all, teardown-all, scan-and-store + 2 templates) |
+| **Power BI docs** | PBIP implemented (`a11y-pbi-report/A11yReport.pbip`) + deployment scripts | 5 docs (data model, dashboard design, Power Query M, Resource Graph, FinOps Toolkit) |
+| **Primary language** | TypeScript 81.8% | PowerShell 59.8%, Bicep 16.4%, Python 13.6%, HCL 5.8%, HTML 4.1% |
 
 ### Workshop Repos
 
@@ -115,39 +122,39 @@ New domains should follow this pattern and create a `capture-screenshots.ps1` sc
 
 | Aspect | Current State | Gap |
 |--------|---------------|-----|
-| **Security pages** | 3 pages (Overview, Alerts by Type, Trend Analysis) | Fully implemented |
-| **Accessibility pages** | None | Need pages for WCAG compliance trends, violation severity distribution |
-| **FinOps pages** | None (specs exist in `finops-scan-demo-app/docs/`) | Need 6 pages per FinOps dashboard design spec |
+| **Security pages** | 3 pages (Overview, Alerts by Type, Trend Analysis) — centralized repo returns HTTP 404, status unverifiable | Status unknown |
+| **Accessibility pages** | Per-domain PBIP: `A11yReport.pbip` (1 page: accessibility_compliance) | Need 4 additional pages per spec (5 total) |
+| **FinOps pages** | Per-domain PBIP: `FinOpsReport.pbip` (1 page: finops_compliance) | Need 5 additional pages per spec (6 total) |
 | **Code Quality pages** | None | Need coverage trends, complexity metrics, test generation tracking |
-| **Data source** | ADO Advanced Security REST API (`advsec.dev.azure.com`) | Non-security domains need pipeline artifact ingestion (SARIF/lcov) |
-| **Format** | PBIP (Power BI Project) — extensible, code-based | Supports adding pages as folder structures |
+| **Data source** | Accessibility: Azure Blob Storage (`a11yscan7yt3mwgxp3wiy`); FinOps: Azure Blob Storage (`finopsscanstore2497`) | Per-domain Blob Storage replaces centralized ADO REST API |
+| **Format** | PBIP per domain (code-based, Git-friendly) | Transition from centralized to per-domain is complete for A11y and FinOps |
 
-The target architecture transitions from a single centralized report to per-domain PBIPs. Each domain's demo-app repo will own a PBIP in `power-bi/`, with data sourced from ADLS Gen 2 via OAuth2 (Organizational Account) instead of the ADO REST API.
+The transition from a single centralized report to per-domain PBIPs is underway. The centralized `advsec-pbi-report-ado` repository returns HTTP 404 and may no longer be available. Both Accessibility and FinOps domains now own their PBIPs in their respective demo-app repositories, sourcing data from Azure Blob Storage rather than the originally specified ADLS Gen 2 + OAuth2.
 
-| Aspect | Current (Centralized) | Target (Per-Domain PBIP) |
-|--------|----------------------|-------------------------|
-| **Ownership** | Single `advsec-pbi-report-ado` repo | Each `{domain}-scan-demo-app/power-bi/` |
-| **Data source** | ADO Advanced Security REST API | ADLS Gen 2 + OAuth2 (Organizational Account) |
-| **Schema** | Flat query results | Star schema: `Fact_Findings` + 6 dimension tables |
-| **Format** | PBIP (centralized) | PBIP per domain (code-based, Git-friendly) |
+| Aspect | Current (Centralized) | Target (Per-Domain PBIP) | Realized State |
+|--------|----------------------|-------------------------|----------------|
+| **Ownership** | Single `advsec-pbi-report-ado` repo (returns 404) | Each `{domain}-scan-demo-app/power-bi/` | A11y: `a11y-pbi-report/`, FinOps: `power-bi/` |
+| **Data source** | ADO Advanced Security REST API | ADLS Gen 2 + OAuth2 (Organizational Account) | Azure Blob Storage + SAS token / Entra ID |
+| **Schema** | Flat query results | Star schema: `Fact_Findings` + 6 dimension tables | Star schema implemented (both domains) |
+| **Format** | PBIP (centralized) | PBIP per domain (code-based, Git-friendly) | PBIP per domain (both domains) |
 
 See [Desired Features to Compare](#desired-features-to-compare) for full architecture details.
 
 ### ADO First-Class Citizen Status
 
-Making Azure DevOps a first-class citizen means every GitHub Actions workflow has an equivalent ADO YAML pipeline, every workshop includes ADO-specific labs, each domain owns a Power BI PBIP, and SARIF results flow to ADLS Gen 2. Current status across all parity dimensions:
+Making Azure DevOps a first-class citizen means every GitHub Actions workflow has an equivalent ADO YAML pipeline, every workshop includes ADO-specific labs, each domain owns a Power BI PBIP, and SARIF results flow to storage. The target architecture specifies ADLS Gen 2; the current implementation uses Azure Blob Storage via scan-and-store pipelines. Current status across all parity dimensions:
 
-| Domain | GH Actions | ADO Pipelines | ADO Workshop Labs | GH Workshop Labs | PBIP | SARIF → ADLS |
-|--------|-----------|---------------|-------------------|------------------|------|-------------|
-| **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | No | Yes | Partial (3 pages) | No |
-| **Accessibility** | `accessibility-scan.yml` (5 workflows) | 8 full pipelines + sample | No | Yes | No | No |
+| Domain | GH Actions | ADO Pipelines | ADO Workshop Labs | GH Workshop Labs | PBIP | SARIF → Storage |
+|--------|-----------|---------------|-------------------|------------------|------|----------------|
+| **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | No | Yes | Partial (3 pages) — repo returns 404, status unknown | No |
+| **Accessibility** | `accessibility-scan.yml` (5 workflows) | 10 pipelines + 5 templates | No | Yes | Yes (`A11yReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
 | **Code Quality** | `code-quality.yml` | `quality-pipeline.yml` (sample) | No | Yes | No | No |
-| **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | None | No | Yes | No | No |
+| **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | 5 pipelines + 2 templates | No | Yes | Yes (`FinOpsReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
 | **APM Security** | `apm-security.yml` | Inline pattern in docs | No | No | No | No |
 
 ## Desired Features to Compare
 
-Three feature areas remain before the framework achieves full domain parity: dual-platform workshops that cover both GitHub and ADO, consistent feature parity between ADO and GitHub across every domain, and domain-specific Power BI PBIPs sourced from ADLS Gen 2. Each area is documented below with implementation patterns, target architecture, and domain-specific details.
+Three feature areas remain before the framework achieves full domain parity: dual-platform workshops that cover both GitHub and ADO, consistent feature parity between ADO and GitHub across every domain, and domain-specific Power BI PBIPs (target: ADLS Gen 2; current: Azure Blob Storage). Each area is documented below with implementation patterns, target architecture, and domain-specific details.
 
 ### Dual-Platform Workshops (GitHub + ADO)
 
@@ -205,29 +212,29 @@ Labs 00 through 05 represent roughly 80% of workshop content and are fully platf
 
 | Domain | GH Workflows | ADO Pipelines (demo-app) | ADO Pipeline (framework sample) | GH Workshop Labs | ADO Workshop Labs | GH SARIF Upload | ADO SARIF Upload | PBIP |
 |--------|--------------|--------------------------|--------------------------------|------------------|-------------------|-----------------|------------------|------|
-| Security | Yes | N/A | Yes | Yes | No | Yes | Yes | Partial (3 pages) |
-| Accessibility | Yes (5) | Yes (8) | Yes | Yes | No | Yes | Yes | No |
+| Security | Yes | N/A | Yes | Yes | No | Yes | Yes | Partial (3 pages) — repo returns 404, status unknown |
+| Accessibility | Yes (5) | Yes (10 + 5 templates) | Yes | Yes | No | Yes | Yes | Yes (1 page) |
 | Code Quality | Yes | No | Yes (sample) | Yes | No | Yes | No | No |
-| FinOps | Yes (2) | No | No | Yes | No | Yes | No | No |
+| FinOps | Yes (2) | Yes (5 + 2 templates) | No | Yes | No | Yes | No | Yes (1 page) |
 
 #### Target State Mapping
 
-| Artifact | GitHub | ADO |
-|----------|--------|-----|
-| CI/CD pipelines | GitHub Actions workflows | ADO YAML pipelines |
-| SARIF upload | `codeql-action/upload-sarif@v4` | `AdvancedSecurity-Publish@1` |
-| Security dashboard | GitHub Security Tab | ADO Advanced Security Overview |
-| Workshop Lab 06 | `lab-06-github-sarif-security.md` | `lab-06-ado-sarif-advsec.md` |
-| Workshop Lab 07 | `lab-07-github-actions.md` | `lab-07-ado-pipelines.md` |
-| Bootstrap scripts | `bootstrap-demo-apps.ps1` | `bootstrap-ado-projects.ps1` |
-| SARIF to data lake | GH Actions → ADLS Gen 2 | ADO pipeline → ADLS Gen 2 |
-| Power BI PBIP | ADLS Gen 2 + OAuth2 | ADLS Gen 2 + OAuth2 (same) |
+| Artifact | GitHub | ADO | Realized State |
+|----------|--------|-----|----------------|
+| CI/CD pipelines | GitHub Actions workflows | ADO YAML pipelines | |
+| SARIF upload | `codeql-action/upload-sarif@v4` | `AdvancedSecurity-Publish@1` | |
+| Security dashboard | GitHub Security Tab | ADO Advanced Security Overview | |
+| Workshop Lab 06 | `lab-06-github-sarif-security.md` | `lab-06-ado-sarif-advsec.md` | |
+| Workshop Lab 07 | `lab-07-github-actions.md` | `lab-07-ado-pipelines.md` | |
+| Bootstrap scripts | `bootstrap-demo-apps.ps1` | `bootstrap-ado-projects.ps1` | `bootstrap-demo-apps-ado.ps1` (ADO provisioning) |
+| SARIF to data lake | GH Actions → ADLS Gen 2 | ADO pipeline → ADLS Gen 2 | Both platforms → Azure Blob Storage via `scan-and-store.ps1` |
+| Power BI PBIP | ADLS Gen 2 + OAuth2 | ADLS Gen 2 + OAuth2 (same) | Azure Blob Storage + SAS token / Entra ID |
 
 See [docs/azure-devops-pipelines.md](azure-devops-pipelines.md) for the full GHAzDO task mapping between GitHub Actions and ADO YAML pipeline tasks.
 
 ### Domain-Specific Power BI PBIP with ADLS Gen 2 + OAuth2
 
-Each domain's demo-app repo owns a PBIP in `power-bi/` with a star schema semantic model sourced from ADLS Gen 2 via OAuth2 (Organizational Account).
+Each domain's demo-app repo owns a PBIP with a star schema semantic model. The target architecture specifies ADLS Gen 2 via OAuth2 (Organizational Account); the current implementations use Azure Blob Storage with SAS tokens for Power BI connectivity and Entra ID for pipeline uploads.
 
 #### PBIP Folder Structure
 
@@ -262,16 +269,47 @@ Each domain's demo-app repo owns a PBIP in `power-bi/` with a star schema semant
                 └── Dim_Repository.tmdl
 ```
 
+##### Actual Implementations
+
+**Accessibility** (`a11y-pbi-report/` — deviates from `power-bi/` convention):
+
+* PBIP file: `A11yReport.pbip` (instead of `{Domain}Alerts.pbip`)
+* Fact table: `Fact_A11yViolations` (instead of `Fact_Findings`)
+* Dimensions: 7 domain-specific (Dim_Date, Dim_Engine, Dim_Impact, Dim_Principle, Dim_Site, Dim_State, Dim_WcagCriterion)
+* Report pages: 1 (`accessibility_compliance`) — spec calls for 5
+* Deployment scripts: `scripts/deploy.ps1`, `scripts/setup-parameters.ps1` (uses FabricPS-PBIP module)
+* Data source: Azure Blob Storage (`a11yscan7yt3mwgxp3wiy/a11y-scan-results`)
+
+**FinOps** (`power-bi/` — follows convention):
+
+* PBIP file: `FinOpsReport.pbip`
+* Fact table: `Fact_FinOpsFindings` (instead of `Fact_Findings`)
+* Dimensions: 5 generic (Dim_Date, Dim_Repository, Dim_Rule, Dim_Severity, Dim_Tool)
+* Report pages: 1 (`finops_compliance`) — spec calls for 6
+* Deployment scripts: None
+* Data source: Azure Blob Storage (`finopsscanstore2497/finops-scan-results`)
+
 #### Data Flow
 
 ```text
-CI/CD Pipelines (GH Actions / ADO YAML)
-  → Scan tools produce SARIF v2.1.0
-  → Upload SARIF to ADLS Gen 2 (az storage blob upload-batch --auth-mode login)
-  → ADLS Gen 2 (sarif-results/{domain}/{org}/{repo}/{date}/*.sarif)
-  → Power BI PBIP connects via AzureStorage.DataLake() + OAuth2
-  → Power Query M parses SARIF JSON → star schema
-  → Domain-specific report pages
+Target Data Flow:
+  CI/CD Pipelines (GH Actions / ADO YAML)
+    → Scan tools produce SARIF v2.1.0
+    → Upload SARIF to ADLS Gen 2 (az storage blob upload-batch --auth-mode login)
+    → ADLS Gen 2 (sarif-results/{domain}/{org}/{repo}/{date}/*.sarif)
+    → Power BI PBIP connects via AzureStorage.DataLake() + OAuth2
+    → Power Query M parses SARIF JSON → star schema
+    → Domain-specific report pages
+
+Realized Data Flow (Accessibility and FinOps):
+  CI/CD Pipelines (GH Actions / ADO YAML)
+    → Scan tools produce results (SARIF, JSON, or tool-native output)
+    → scan-and-store.ps1 transforms results to fact table JSON
+    → Upload JSON to Azure Blob Storage (az storage blob upload --auth-mode login)
+    → Azure Blob Storage ({storageaccount}/{container}/{yyyy/MM/dd}/{key}.json)
+    → Power BI PBIP connects via AzureBlobStorage() + SAS token
+    → Power Query M parses JSON → star schema
+    → Domain-specific report pages
 ```
 
 #### ADLS Gen 2 Container Layout
@@ -284,7 +322,23 @@ sarif-results/
   code-quality/{org}/{repo}/{date}/
 ```
 
-#### OAuth2 Requirements
+##### Realized Azure Blob Storage Layout
+
+Both domains implement a `scan-and-store.yml` pipeline that runs on a weekly schedule (Monday 06:00 UTC). The pipeline executes scan tools, transforms results into fact table JSON format via `scripts/scan-and-store.ps1`, and uploads to domain-specific Azure Blob Storage containers using Entra ID authentication.
+
+| Aspect | Accessibility | FinOps |
+|--------|-------------|--------|
+| Pipeline | `scan-and-store.yml` | `scan-and-store.yml` |
+| Schedule | Weekly Monday 06:00 UTC | Weekly Monday 06:00 UTC |
+| Transform | Results → `Fact_A11yViolations` JSON | SARIF → `Fact_FinOpsFindings` JSON |
+| Storage account | `a11yscan7yt3mwgxp3wiy` | `finopsscanstore2497` |
+| Container | `a11y-scan-results` | `finops-scan-results` |
+| Upload path | `{yyyy/MM/dd}/{siteKey}.json` | `{yyyy/MM/dd}/{appId}-{toolName}.json` |
+| Deduplication | SHA-256 ViolationId | SHA-256 FindingId |
+
+#### Authentication Requirements
+
+**Target architecture** (ADLS Gen 2):
 
 | Property | Value |
 |----------|-------|
@@ -293,6 +347,24 @@ sarif-results/
 | Cross-tenant | Not supported |
 | URL format | `https://<accountname>.dfs.core.windows.net/<container>` |
 | Subfolder in URL | Not supported; filter in M code |
+
+**Realized architecture** (Azure Blob Storage):
+
+Pipeline upload authentication:
+
+| Property | Value |
+|----------|-------|
+| Method | Entra ID Managed Identity (`az storage blob upload --auth-mode login`) |
+| RBAC required | `Storage Blob Data Contributor` (for pipeline uploads) |
+| Pipeline task | `AzureCLI@2` with service connection |
+
+Power BI connectivity:
+
+| Property | Value |
+|----------|-------|
+| Method | SAS token (Accessibility) / Parameterized connection string (FinOps) |
+| Access level | Read-only to specific containers |
+| URL format | `https://{accountname}.blob.core.windows.net/{container}` |
 
 #### Domain-Specific Report Pages
 
@@ -387,7 +459,7 @@ in
 
 ## Gaps Identified
 
-Research across both domains reveals six parity gaps spanning domain-level parity, dual-platform workshops, and Power BI PBIP coverage.
+Research across both domains reveals four remaining parity gaps spanning domain-level parity, dual-platform workshops, and Power BI PBIP coverage.
 
 ### Gap 1: FinOps Workshop Has No Copilot Artifacts
 
@@ -395,17 +467,17 @@ The Accessibility workshop repository includes a workshop-specific agent and gov
 
 To close this gap, create a FinOps workshop agent in `.github/agents/` and add governance instructions to `.github/instructions/` in the `finops-scan-workshop` repository, following the patterns established in the Accessibility workshop.
 
-### Gap 2: FinOps Demo App Has No ADO Pipelines
+### ~~Gap 2: FinOps Demo App Has No ADO Pipelines~~ — CLOSED
 
-The Accessibility demo app repository includes 8 Azure DevOps pipelines covering CI/CD, deployment orchestration, scan variants, and reusable templates. The FinOps demo app repository has none.
+**Status: CLOSED** — The FinOps demo app repository now includes 5 pipelines (`finops-scan`, `finops-cost-gate`, `deploy-all`, `teardown-all`, `scan-and-store`), 2 templates (`deploy-app`, `teardown-app`), and 1 variables file (`common.yml`). ADO bootstrap scripts (`bootstrap-demo-apps-ado.ps1`, `setup-oidc-ado.ps1`) are also present. The ADO project `FinOps` in `MngEnvMCAP675646` has 5 Azure Repos, 3 variable groups, 6 WIF service connections, 1 environment, and 4 registered pipelines.
 
-To close this gap, create equivalent ADO pipelines in `.azuredevops/pipelines/` in the `finops-scan-demo-app` repository. Reference the Accessibility pipeline templates for structure and task mapping.
+### Gap 3: Domain-Specific Power BI Pages Below Spec — PARTIALLY CLOSED
 
-### Gap 3: No Domain-Specific Power BI Pages Exist
+**Status: PARTIALLY CLOSED** — Both domains now have per-domain PBIPs (Accessibility: `A11yReport.pbip` with 1 page, FinOps: `FinOpsReport.pbip` with 1 page). However, the spec calls for 5 pages (Accessibility) and 6 pages (FinOps).
 
-The Power BI report (`advsec-pbi-report-ado`) contains only 3 security-focused pages (Overview, Alerts by Type, Trend Analysis). Neither Accessibility nor FinOps has domain-specific pages in the report, though FinOps has detailed design specifications for 6 dashboard pages documented in its `docs/` directory.
+To fully close this gap, add the remaining report pages to each domain's PBIP as specified in the domain-specific report pages table in [Desired Features to Compare](#desired-features-to-compare).
 
-To close this gap, add domain-specific pages to the Power BI report. Start with FinOps pages because full design specifications already exist, then create equivalent pages for Accessibility.
+> **Note**: The centralized `advsec-pbi-report-ado` repo returns HTTP 404. The Security domain PBIP status is unknown. The per-domain PBIP approach may have fully replaced the centralized model.
 
 ### Gap 4: SARIF Generation Approach Differs Between Domains
 
@@ -419,11 +491,14 @@ All workshop labs for Lab 06 (SARIF output and Security Tab) and Lab 07 (GitHub 
 
 To close this gap, create ADO-specific lab files (`lab-06-ado-sarif-advsec.md` and `lab-07-ado-pipelines.md`) in each domain's workshop repository. Follow the dual-platform architecture described in [Desired Features to Compare](#desired-features-to-compare). Labs 00–05 remain platform-agnostic and require no changes.
 
-### Gap 6: No Domain-Specific Power BI PBIPs
+### ~~Gap 6: No Domain-Specific Power BI PBIPs~~ — CLOSED
 
-No domain currently has a local PBIP in its demo-app repository. The only Power BI content is the centralized `advsec-pbi-report-ado` repository with 3 security pages. Domain-specific PBIPs using ADLS Gen 2 + OAuth2 do not exist.
+**Status: CLOSED** — Both Accessibility and FinOps domains now have per-domain PBIPs:
 
-To close this gap, create a PBIP in `power-bi/` within each domain's demo-app repository following the architecture in [Desired Features to Compare](#desired-features-to-compare). Start with the Accessibility domain because it has the most mature scanning pipeline, then extend to FinOps, Code Quality, and Security.
+* Accessibility: `a11y-pbi-report/A11yReport.pbip` with full TMDL semantic model (`Fact_A11yViolations` + 7 dimensions)
+* FinOps: `power-bi/FinOpsReport.pbip` with full TMDL semantic model (`Fact_FinOpsFindings` + 5 dimensions)
+
+Both PBIPs source data from Azure Blob Storage (not ADLS Gen 2 as originally specified). The scan-and-store pipeline pattern feeds data into these PBIPs on a weekly schedule.
 
 ## Contributing a New Domain
 
@@ -667,12 +742,15 @@ Create a `power-bi/` directory in the domain's demo-app repository following the
 
 Key requirements:
 
-* **Semantic model**: Star schema with `Fact_Findings` + 6 dimension tables (Date, Severity, Tool, Rule, Repository, Domain)
-* **Data source**: ADLS Gen 2 via `AzureStorage.DataLake()` with OAuth2 Organizational Account
-* **Domain filter**: Add a domain filter parameter in `expressions.tmdl` to scope SARIF ingestion to `{domain}/`
+* **Semantic model**: Star schema with domain-specific fact table + dimension tables (see existing implementations for reference)
+* **Data source (target)**: ADLS Gen 2 via `AzureStorage.DataLake()` with OAuth2 Organizational Account
+* **Data source (current pattern)**: Azure Blob Storage via `AzureBlobStorage()` with SAS token — both Accessibility (`a11yscan7yt3mwgxp3wiy`) and FinOps (`finopsscanstore2497`) use this pattern
+* **Scan-and-store pipeline**: Create `scripts/scan-and-store.ps1` to transform scan results into fact table JSON and `scan-and-store.yml` pipeline for scheduled weekly uploads (Monday 06:00 UTC)
+* **Domain filter**: Add a domain filter parameter in `expressions.tmdl` to scope data ingestion
 * **Report pages**: Create domain-specific pages as documented in the domain-specific pages table in [Desired Features to Compare](#desired-features-to-compare)
-* **CI/CD upload**: Add a pipeline step to upload SARIF to ADLS Gen 2 (both GitHub Actions and ADO YAML)
-* **RBAC**: Assign `Storage Blob Data Reader` on the ADLS Gen 2 container to report consumers
+* **CI/CD upload**: Add scan-and-store pipeline to upload results to Azure Blob Storage (both GitHub Actions and ADO YAML)
+* **RBAC**: Assign `Storage Blob Data Contributor` for pipeline uploads, `Storage Blob Data Reader` for report consumers
+* **Deployment scripts (optional)**: See Accessibility `a11y-pbi-report/scripts/deploy.ps1` for PBIP deployment using FabricPS-PBIP module
 
 For Code Quality, create these report pages:
 
@@ -683,7 +761,7 @@ For Code Quality, create these report pages:
 | Complexity Analysis | Cyclomatic complexity distribution, high-complexity function list |
 | Test Generation Tracking | Tests generated vs. coverage improvement correlation |
 
-The legacy centralized report (`advsec-pbi-report-ado`) remains available for security domain visualization until the per-domain PBIP migration is complete.
+The centralized report (`advsec-pbi-report-ado`) returns HTTP 404 and may no longer be available. Refer to existing per-domain PBIPs (Accessibility: `a11y-pbi-report/`, FinOps: `power-bi/`) as implementation examples.
 
 ### Step 10: Ensure ADO First-Class Citizenship
 
@@ -716,17 +794,21 @@ Use this checklist when contributing a new domain:
 - [ ] Create Copilot skill (domain scanner knowledge)
 - [ ] Create `bootstrap-demo-apps.ps1` (repo creation, OIDC, secrets)
 - [ ] Create `setup-oidc.ps1` (Azure AD federation)
+- [ ] Create `bootstrap-demo-apps-ado.ps1` (ADO project provisioning, repos, variable groups, WIF)
+- [ ] Create `setup-oidc-ado.ps1` (ADO WIF federation for ADO Pipelines)
 - [ ] Create GitHub Actions workflows (ci, scan, gate, deploy-all)
 - [ ] Create reusable GitHub Action (composite action) for external CI use
 - [ ] Create Azure DevOps pipelines (ci-cd, scan, deploy-all, templates)
+- [ ] Create `scripts/scan-and-store.ps1` (transform scan results to fact table JSON for Power BI)
+- [ ] Create `scan-and-store.yml` pipeline (scheduled weekly data upload to Azure Blob Storage)
 - [ ] Document Power BI data model and dashboard design
 - [ ] Document Power Query M expressions for data ingestion
 - [ ] Write comprehensive README
-- [ ] Create per-domain Power BI PBIP in `power-bi/` directory
-- [ ] Define TMDL semantic model with star schema (`Fact_Findings` + 6 dimensions)
-- [ ] Configure ADLS Gen 2 connection with OAuth2 in `expressions.tmdl`
+- [ ] Create per-domain Power BI PBIP in `power-bi/` directory (or domain-specific name)
+- [ ] Define TMDL semantic model with star schema (domain-specific fact table + dimension tables)
+- [ ] Configure Azure Blob Storage connection in `expressions.tmdl` (SAS token or Entra ID)
 - [ ] Create domain-specific report pages
-- [ ] Add CI/CD pipeline step to upload SARIF to ADLS Gen 2
+- [ ] Add scan-and-store pipeline for scheduled data uploads to Azure Blob Storage
 
 ### Workshop Repository
 
@@ -755,10 +837,11 @@ Use this checklist when contributing a new domain:
 
 ### Power BI Report
 
-- [ ] Add report pages for domain findings in `advsec-pbi-report-ado`
+- [ ] ~~Add report pages to `advsec-pbi-report-ado`~~ Create per-domain PBIP (centralized repo returns 404, may be deprecated)
 - [ ] Add fact and dimension tables to semantic model
 - [ ] Document Power Query M expressions and DAX measures
-- [ ] Test with real SARIF data from GitHub Code Scanning API
+- [ ] Test with real data from scan-and-store pipeline output
+- [ ] Add PBIP deployment scripts (optional — see Accessibility `deploy.ps1` pattern)
 
 ## Existing Framework Assets for Code Quality
 
