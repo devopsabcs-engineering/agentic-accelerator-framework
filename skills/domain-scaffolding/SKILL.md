@@ -75,13 +75,40 @@ The following directory tree is the canonical structure for any `{domain}-scan-d
 │   ├── setup-oidc-ado.ps1                       # ADO: Azure AD WIF federation
 │   └── scan-and-store.ps1                       # Parse SARIF → ADLS Gen2 upload
 ├── {prefix}-demo-app-001/                       # Sample app 1
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── deploy.yml                       # Per-app deploy workflow
 │   ├── src/
 │   ├── infra/main.bicep
 │   └── Dockerfile
 ├── {prefix}-demo-app-002/                       # Sample app 2
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── deploy.yml                       # Per-app deploy workflow
+│   ├── src/
+│   ├── infra/main.bicep
+│   └── Dockerfile
 ├── {prefix}-demo-app-003/                       # Sample app 3
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── deploy.yml                       # Per-app deploy workflow
+│   ├── src/
+│   ├── infra/main.bicep
+│   └── Dockerfile
 ├── {prefix}-demo-app-004/                       # Sample app 4
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── deploy.yml                       # Per-app deploy workflow
+│   ├── src/
+│   ├── infra/main.bicep
+│   └── Dockerfile
 ├── {prefix}-demo-app-005/                       # Sample app 5
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── deploy.yml                       # Per-app deploy workflow
+│   ├── src/
+│   ├── infra/main.bicep
+│   └── Dockerfile
 ├── power-bi/
 │   ├── {Domain}Report.pbip
 │   ├── {Domain}Report.Report/
@@ -124,6 +151,8 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 ├── _config.yml                                  # Jekyll configuration
 ├── index.md                                     # Workshop home / GitHub Pages landing
 ├── Gemfile                                      # Jekyll dependencies
+├── _includes/
+│   └── head-custom.html                         # Mermaid v11 ESM support
 ├── .devcontainer/
 │   ├── devcontainer.json                        # Dev container with prerequisites
 │   └── post-create.sh                           # Install domain-specific tools
@@ -170,6 +199,30 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 ├── CONTRIBUTING.md                              # Workshop contribution guide
 └── README.md
 ```
+
+## Mermaid Support Template
+
+Workshop repos use Jekyll's `head-custom.html` include to enable Mermaid diagrams on GitHub Pages.
+
+### `_includes/head-custom.html`
+
+```html
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true });
+  document.querySelectorAll('pre > code.language-mermaid').forEach(el => {
+    const div = document.createElement('div');
+    div.className = 'mermaid';
+    div.textContent = el.textContent;
+    el.parentElement.replaceWith(div);
+  });
+</script>
+<style>
+  .mermaid { text-align: center; }
+</style>
+```
+
+This script loads Mermaid v11 as an ES module and converts fenced code blocks with the `mermaid` language identifier into rendered diagrams.
 
 ## Bootstrap Script Templates
 
@@ -265,6 +318,79 @@ Creates Azure DevOps repos, variable groups, service connections, and pipelines.
 5. Create pipeline definitions from YAML files.
 6. Set pipeline permissions and approvals.
 
+### Idempotency Requirements
+
+All bootstrap scripts MUST be idempotent. Every resource creation step MUST check for existing resources before creating. The following patterns are required:
+
+#### GitHub Repo Creation Guard
+
+```powershell
+$repoCheck = gh repo view "$Org/$RepoName" --json name 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Creating repository $Org/$RepoName..." -ForegroundColor Green
+    gh repo create "$Org/$RepoName" --public --description "$Description"
+} else {
+    Write-Host "Repository $Org/$RepoName already exists — skipping." -ForegroundColor Yellow
+}
+```
+
+#### Content Push Guard
+
+```powershell
+$commitCount = gh api "repos/$Org/$RepoName/commits?per_page=1" --jq 'length' 2>$null
+if ($commitCount -gt 0) {
+    Write-Host "Repository $Org/$RepoName already has content — skipping push." -ForegroundColor Yellow
+} else {
+    # ... git init, add, commit, push ...
+}
+```
+
+#### Azure AD App Registration Guard
+
+```powershell
+$existingApp = az ad app list --display-name $AppDisplayName --query "[0].appId" -o tsv
+if ($existingApp) {
+    Write-Host "App registration '$AppDisplayName' already exists (appId: $existingApp)." -ForegroundColor Yellow
+    $appId = $existingApp
+} else {
+    $appId = az ad app create --display-name $AppDisplayName --query appId -o tsv
+}
+```
+
+#### Federated Credential Guard
+
+```powershell
+$existingCreds = az ad app federated-credential list --id $appId --query "[].name" -o tsv
+if ($existingCreds -contains $credName) {
+    Write-Host "Federated credential '$credName' already exists — skipping." -ForegroundColor Yellow
+} else {
+    az ad app federated-credential create --id $appId --parameters $credParams
+}
+```
+
+#### Service Principal Guard
+
+```powershell
+$existingSp = az ad sp list --filter "appId eq '$appId'" --query "[0].id" -o tsv
+if ($existingSp) {
+    Write-Host "Service principal already exists for appId $appId." -ForegroundColor Yellow
+    $spId = $existingSp
+} else {
+    $spId = az ad sp create --id $appId --query id -o tsv
+}
+```
+
+#### Role Assignment Guard
+
+```powershell
+$existingRole = az role assignment list --assignee $spId --role $RoleName --scope $scope --query "[0]" -o tsv
+if ($existingRole) {
+    Write-Host "Role '$RoleName' already assigned — skipping." -ForegroundColor Yellow
+} else {
+    az role assignment create --assignee $spId --role $RoleName --scope $scope
+}
+```
+
 ## Screenshot Manifest Pattern
 
 The screenshot system uses a **manifest-driven approach** for maintainability. Adding a new screenshot requires adding a JSON entry rather than modifying PowerShell code.
@@ -309,6 +435,20 @@ The screenshot system uses a **manifest-driven approach** for maintainability. A
 | `url` | string | Conditional | Target URL for `playwright-navigate` or `playwright-auth` |
 | `script` | string | Conditional | Custom script path for `script` method |
 | `storageState` | string | Conditional | Playwright auth state file for `playwright-auth` |
+| `workingDir` | string | No | Working directory override. Set to `"demo-app"` for commands that must run inside the sibling `{domain}-scan-demo-app` directory. The capture script resolves this to the actual sibling path. |
+
+#### workingDir Example
+
+```json
+{
+  "lab": "02",
+  "name": "lab-02-lint-results",
+  "phase": 1,
+  "method": "freeze-execute",
+  "command": "npx eslint src/ --format stylish | Select-Object -First 40",
+  "workingDir": "demo-app"
+}
+```
 
 ### Capture Methods
 
@@ -327,6 +467,29 @@ The screenshot system uses a **manifest-driven approach** for maintainability. A
 | 2 | App-dependent | Deployed demo apps | Scan results against live apps |
 | 3 | GitHub Web UI | GitHub authentication | Security tab, Actions, PR views |
 | 4 | ADO Web UI | ADO authentication | ADO Advanced Security, Pipelines, Boards |
+
+### Platform Requirements
+
+All `command` values in screenshot manifest entries MUST use PowerShell Core syntax. The following Unix commands are forbidden:
+
+| Forbidden | Replacement |
+|-----------|-------------|
+| `head -n N` | `Select-Object -First N` |
+| `tail -n N` | `Select-Object -Last N` |
+| `cat file` | `Get-Content file` |
+| `2>/dev/null` | `2>$null` |
+| `/tmp/` | `$env:TEMP` |
+| `./script` | `.\script` |
+
+### PATH Forwarding
+
+Capture scripts MUST forward the current `$env:PATH` to child processes to ensure tools installed via `pip install --user` (Python Scripts directory) are available:
+
+```powershell
+$env:PATH = "$env:USERPROFILE\AppData\Local\Programs\Python\Python312\Scripts;$env:PATH"
+```
+
+The capture script SHOULD also accept a `-DemoAppDir` parameter to explicitly specify the sibling demo-app directory path.
 
 ### Shared Module: screenshot-helpers.psm1
 
@@ -457,6 +620,133 @@ Path pattern: {yyyy}/{MM}/{dd}/{appId}-{tool}.json
     SarifFile: '$(Build.SourcesDirectory)/results.sarif'
 ```
 
+## Individual Demo App Deploy Workflow Template
+
+Each individual demo app repository (`{prefix}-demo-app-NNN`) includes a `.github/workflows/deploy.yml` that deploys the app to Azure App Service.
+
+### Base Template
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_RG: rg-{prefix}-demo-{NNN}
+  APP_NAME: {prefix}-demo-app-{NNN}
+  LOCATION: canadacentral
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create Resource Group
+        run: az group create --name ${{ env.AZURE_RG }} --location ${{ env.LOCATION }}
+
+      - name: Deploy Infrastructure
+        run: |
+          az deployment group create \
+            --resource-group ${{ env.AZURE_RG }} \
+            --template-file infra/main.bicep \
+            --parameters appName=${{ env.APP_NAME }}
+
+      # Language-specific build step — see variants below
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}
+          # package or images parameter per language
+
+      - name: Health Check
+        run: |
+          APP_URL=$(az webapp show -g ${{ env.AZURE_RG }} -n ${{ env.APP_NAME }} --query defaultHostName -o tsv)
+          curl -sf "https://$APP_URL" || exit 1
+
+      - name: Summary
+        run: |
+          APP_URL=$(az webapp show -g ${{ env.AZURE_RG }} -n ${{ env.APP_NAME }} --query defaultHostName -o tsv)
+          echo "### ✅ ${{ env.APP_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "Deployed to: https://$APP_URL" >> $GITHUB_STEP_SUMMARY
+```
+
+### Language-Specific Build Steps
+
+#### C# (.NET)
+
+```yaml
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+      - name: Build
+        run: dotnet publish -c Release -o ./publish
+```
+
+#### Python
+
+```yaml
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+```
+
+#### Java (Gradle)
+
+```yaml
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Build
+        run: ./gradlew build
+```
+
+#### TypeScript (Node.js)
+
+```yaml
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install and Build
+        run: |
+          npm ci
+          npm run build
+```
+
+#### Go
+
+```yaml
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Build
+        run: go build -o ./app .
+```
+
 ## Sample App Specification
 
 Each domain deploys **5 sample apps**, one per language/framework. Every app contains intentional violations that the domain scanner detects.
@@ -485,6 +775,59 @@ Generate one app per language, varying the framework:
 | `{prefix}-demo-app-003` | C# | ASP.NET Core |
 | `{prefix}-demo-app-004` | Java | Spring Boot |
 | `{prefix}-demo-app-005` | Go | net/http or Gin |
+
+## ESLint Configuration Template
+
+JavaScript and TypeScript demo apps MUST include an `eslint.config.mjs` file using the flat config format (ESLint v9+).
+
+### Base Template (`eslint.config.mjs`)
+
+```javascript
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({ baseDirectory: __dirname });
+
+const eslintConfig = [
+  ...compat.extends(
+    // Add framework-specific extends here
+    "plugin:@typescript-eslint/recommended"
+  ),
+  {
+    rules: {
+      // Intentional violations for scanner findings
+      "prefer-const": "warn",
+    },
+  },
+];
+
+export default eslintConfig;
+```
+
+### Framework-Specific Extensions
+
+| Framework | Additional Extends |
+|-----------|-------------------|
+| Next.js | `"next/core-web-vitals"` |
+| Express | (none — base config sufficient) |
+| Fastify | (none — base config sufficient) |
+
+### Required Dependencies
+
+```json
+{
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "@eslint/eslintrc": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0"
+  }
+}
+```
 
 ## Domain Parameterization
 
@@ -554,3 +897,139 @@ Workshop labs reference specific files and features from the demo-app repo. The 
 | lab-07 (GitHub) | Copilot agents, instructions | `.github/agents/`, `.github/instructions/` |
 | lab-07 (ADO) | ADO pipelines, Advanced Security | `.azuredevops/pipelines/` |
 | lab-08 | Power BI PBIP, scan-and-store | `power-bi/`, `scripts/scan-and-store.ps1` |
+
+## Lab Markdown Template
+
+Every generated lab README MUST follow this template structure:
+
+````markdown
+---
+permalink: /labs/lab-{NN}-{slug}/
+title: "Lab {NN}: {Title}"
+description: "{One-sentence description}"
+---
+
+# Lab {NN}: {Title}
+
+| Duration | Level | Prerequisites |
+|----------|-------|---------------|
+| {NN} min | {Beginner/Intermediate/Advanced} | {Lab NN-1 or None} |
+
+## Learning Objectives
+
+- {Objective 1}
+- {Objective 2}
+- {Objective 3}
+
+## Prerequisites
+
+- {Prerequisite 1}
+- {Prerequisite 2}
+
+## Exercises
+
+### Exercise 1: {Title}
+
+> **Working Directory**: Run the following commands from the `{domain}-scan-demo-app` repository root.
+
+{Step instructions}
+
+```powershell
+{command}
+```
+
+![{Step description}](../images/lab-{NN}/lab-{NN}-{step-slug}.png)
+
+### Exercise 2: {Title}
+
+{Step instructions}
+
+![{Step description}](../images/lab-{NN}/lab-{NN}-{step-slug}.png)
+
+## Verification Checkpoint
+
+Verify your work before continuing:
+
+- [ ] {Verification item 1}
+- [ ] {Verification item 2}
+
+## Summary
+
+{Key takeaways}
+
+## Next Steps
+
+Proceed to [Lab {NN+1}: {Next Title}](../lab-{NN+1}-{next-slug}/).
+````
+
+## Repository Configuration Checklist
+
+After content is pushed, configure these repository-level settings via bootstrap scripts or manual setup.
+
+### Demo App Repository
+
+| Setting | Command | Required |
+|---------|---------|----------|
+| Description | `gh repo edit "$Org/$Repo" --description "$Desc"` | Yes |
+| Topics | `gh repo edit "$Org/$Repo" --add-topic $topic` (loop) | Yes |
+| Code scanning | `gh api repos/$Org/$Repo/code-scanning/default-setup -X PATCH -f state=configured` | Yes |
+| Environments | `gh api repos/$Org/$Repo/environments/production --method PUT` | Yes |
+
+### Workshop Repository
+
+| Setting | Command | Required |
+|---------|---------|----------|
+| Description | `gh repo edit "$Org/$Repo" --description "$Desc"` | Yes |
+| Topics | `gh repo edit "$Org/$Repo" --add-topic $topic` (loop) | Yes |
+| Template flag | `gh repo edit "$Org/$Repo" --template` | Yes |
+| GitHub Pages | `gh api "repos/$Org/$Repo/pages" --method POST -f source='{"branch":"main","path":"/"}'` | Yes |
+| Website URL | `gh repo edit "$Org/$Repo" --homepage "https://$Org.github.io/$Repo"` | Yes |
+
+### Individual Demo App Repositories
+
+| Setting | Command | Required |
+|---------|---------|----------|
+| Description | `gh repo edit "$Org/$Repo" --description "$Desc"` | Yes |
+| Topics | `gh repo edit "$Org/$Repo" --add-topic $topic` (loop) | Yes |
+| Secrets | `gh secret set AZURE_CLIENT_ID --body $clientId -R "$Org/$Repo"` | Yes |
+| Environments | `gh api repos/$Org/$Repo/environments/production --method PUT` | Yes |
+
+### Resource Group Strategy
+
+Recommended: Use separate resource groups per demo app for isolation:
+
+```text
+rg-{prefix}-demo-001
+rg-{prefix}-demo-002
+...
+rg-{prefix}-demo-005
+```
+
+This enables independent teardown and cost tracking per app.
+
+## DevContainer Template Updates
+
+The workshop DevContainer's `post-create.sh` MUST automatically set up the scanner demo-app as a sibling directory for workshop participants.
+
+### post-create.sh Template
+
+```bash
+#!/bin/bash
+set -e
+
+DOMAIN="{domain}"
+SCANNER_REPO="{domain}-scan-demo-app"
+ORG="devopsabcs-engineering"
+
+# Fork and clone scanner repo as sibling
+if [ ! -d "../$SCANNER_REPO" ]; then
+  echo "Forking $ORG/$SCANNER_REPO..."
+  gh repo fork "$ORG/$SCANNER_REPO" --clone -- "../$SCANNER_REPO" 2>/dev/null || \
+    git clone "https://github.com/$ORG/$SCANNER_REPO.git" "../$SCANNER_REPO"
+fi
+
+# Install domain-specific tools
+# {domain-specific installations here}
+```
+
+The script uses `gh repo fork` with a fallback to `git clone` for environments without GitHub CLI authentication.

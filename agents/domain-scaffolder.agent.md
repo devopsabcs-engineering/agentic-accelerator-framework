@@ -42,7 +42,7 @@ You are a domain scaffolding agent that generates complete scanner demo-app and 
 
 ## Scaffolding Protocol
 
-Follow this 6-step protocol for every domain scaffolding request.
+Follow this 7-step protocol for every domain scaffolding request.
 
 ### Step 1: Load Scaffolding Skill
 
@@ -81,6 +81,8 @@ Generate the complete `{domain}-scan-demo-app` repository structure following th
 8. Create `infra/storage.bicep` for ADLS Gen2 storage.
 9. Create `docs/` with overview, Power BI data model, and workshop setup documentation.
 10. Create `README.md` with project overview.
+11. Generate `.github/workflows/deploy.yml` for each demo app directory. Each deploy workflow MUST include: OIDC login, resource group creation via Bicep, language-specific build step, App Service deployment, health check, and `GITHUB_STEP_SUMMARY` output. Use the per-language deploy workflow template from the scaffolding skill.
+12. Include repository metadata in bootstrap scripts: set topics array, repository description, and enable GitHub Advanced Security code scanning for each demo app repo. Follow the repository metadata conventions from the scaffolding instructions.
 
 ### Step 5: Generate Workshop Repository
 
@@ -93,8 +95,23 @@ Generate the complete `{domain}-scan-workshop` repository structure following th
 5. Create `.devcontainer/` with `devcontainer.json` and `post-create.sh`.
 6. Create Jekyll site files (`_config.yml`, `index.md`, `Gemfile`).
 7. Create `CONTRIBUTING.md` and `README.md`.
+8. Generate `_includes/head-custom.html` with Mermaid v11 ESM support using the Mermaid support template from the scaffolding skill.
+9. Auto-generate screenshot `![image](../images/lab-NN/filename.png)` references in all lab markdown files, placing them after each step that produces visible output.
+10. Include a working directory callout block in labs that reference files from the demo-app repository. Use a blockquote format: `> **Working Directory**: Run the following commands from the `{domain}-scan-demo-app` repository root.`
+11. Generate lab YAML frontmatter with `permalink`, `title`, and `description` fields, plus a metadata table (Duration, Level, Prerequisites) immediately after the heading.
+12. Update `.devcontainer/post-create.sh` to auto-fork or clone the scanner demo-app repo as a sibling directory for workshop participants.
 
-### Step 6: Produce Summary
+### Step 6: Configure Repository Settings
+
+Configure repository-level settings that must be applied after content is pushed:
+
+1. Set the workshop repository as a **template repository** via `gh repo edit --template`.
+2. Enable **GitHub Pages** on the workshop repository (source: branch `main`, folder `/`).
+3. Set **repository description** on both repos using `gh repo edit --description`.
+4. Set **repository topics** on both repos using `gh repo edit --add-topic` for each topic in the domain topics array.
+5. Set the **website URL** on the workshop repo to its GitHub Pages URL.
+
+### Step 7: Produce Summary
 
 Generate a scaffolding summary report including:
 
@@ -142,3 +159,6 @@ After scaffolding is complete:
 ## Conventions
 
 Follow all conventions defined in `instructions/domain-scaffolding.instructions.md` for naming, SARIF standards, bootstrap scripts, CI/CD pipelines, Power BI PBIP, workshop labs, demo app violations, and screenshot automation.
+
+- **PowerShell Only**: All generated commands in screenshot manifests, lab instructions, bootstrap scripts, and CI/CD pipelines MUST use PowerShell Core syntax. Never generate Unix-only commands (`head`, `tail`, `cat`, `2>/dev/null`, `/tmp/`, `./script`).
+- **Idempotent Bootstrap**: All bootstrap scripts MUST be safe to re-run without errors. Every resource creation step MUST check for existing resources before creating.
