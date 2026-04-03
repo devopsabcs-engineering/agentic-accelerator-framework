@@ -1,0 +1,211 @@
+# Code Quality Scan
+# GitHub Actions workflow for multi-tool code quality scanning with SARIF output
+# Covers: linting (MegaLinter), complexity (Lizard), duplication (jscpd), coverage (multi-language)
+# Each job uploads SARIF to GitHub Security tab via codeql-action/upload-sarif@v4
+# Work item: AB#2075
+
+name: Code Quality Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Lint — MegaLinter multi-language static analysis
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (MegaLinter)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run MegaLinter
+        uses: oxsecurity/megalinter@v8
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          SARIF_REPORTER: true
+          APPLY_FIXES: none
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload MegaLinter SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: megalinter-reports/megalinter-report.sarif
+          category: code-quality/lint
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Complexity — Lizard cyclomatic complexity analysis
+  # ---------------------------------------------------------------------------
+  complexity:
+    name: Complexity (Lizard)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Lizard
+        run: pip install lizard
+
+      - name: Run complexity analysis
+        run: |
+          lizard --csv src/ > lizard-output.csv || true
+
+      - name: Convert to SARIF
+        run: |
+          python scripts/lizard-to-sarif.py \
+            --input lizard-output.csv \
+            --output complexity.sarif \
+            --ccn-threshold 10 \
+            --length-threshold 50
+
+      - name: Upload complexity SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: complexity.sarif
+          category: code-quality/complexity
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Duplication — jscpd copy-paste detection
+  # ---------------------------------------------------------------------------
+  duplication:
+    name: Duplication (jscpd)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install jscpd
+        run: npm install -g jscpd
+
+      - name: Run duplication detection
+        run: |
+          jscpd src/ \
+            --reporters sarif \
+            --output jscpd-report \
+            --min-lines 10 \
+            --min-tokens 50 || true
+
+      - name: Upload duplication SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: jscpd-report/jscpd-report.sarif
+          category: code-quality/duplication
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Coverage — per-language test coverage with matrix strategy
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: Coverage (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: typescript
+            setup: |
+              npm ci
+            command: npm test -- --coverage --coverageReporters=json-summary
+            coverage-file: coverage/coverage-summary.json
+            format: json-summary
+          - language: python
+            setup: |
+              pip install pytest pytest-cov
+            command: pytest --cov --cov-report=xml:coverage.xml
+            coverage-file: coverage.xml
+            format: cobertura
+          - language: csharp
+            setup: |
+              dotnet restore
+            command: dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage
+            coverage-file: coverage/**/coverage.cobertura.xml
+            format: cobertura
+          - language: java
+            setup: ""
+            command: mvn test jacoco:report
+            coverage-file: target/site/jacoco/jacoco.xml
+            format: jacoco
+          - language: go
+            setup: ""
+            command: go test -coverprofile=coverage.out ./...
+            coverage-file: coverage.out
+            format: gocover
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python (for SARIF converter)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        if: matrix.language == 'typescript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up Java
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Setup environment
+        if: matrix.setup != ''
+        run: ${{ matrix.setup }}
+
+      - name: Run tests with coverage
+        run: ${{ matrix.command }}
+        continue-on-error: true
+
+      - name: Convert coverage to SARIF
+        run: |
+          python scripts/coverage-to-sarif.py \
+            --input "${{ matrix.coverage-file }}" \
+            --format ${{ matrix.format }} \
+            --output coverage-${{ matrix.language }}.sarif \
+            --threshold 80
+
+      - name: Upload coverage SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: coverage-${{ matrix.language }}.sarif
+          category: code-quality/coverage/${{ matrix.language }}
