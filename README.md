@@ -154,6 +154,12 @@ samples/
 * [Accessibility Scan Workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) — Workshop for WCAG 2.2 Level AA accessibility scanning and remediation using custom agents
 * [FinOps Scan Workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) — Workshop for Azure cost optimization and FinOps governance using custom agents
 
+## DIY: Build a New Domain
+
+Ready to build the Code Quality domain from scratch? The framework includes a `DomainScaffolder` agent and complete automation artifacts for generating scanner demo-app and workshop repositories with full parity to the existing Accessibility and FinOps domains.
+
+See the **[DIY: Build the Code Quality Domain](docs/DIY-Code-Quality-Domain.md)** guide for step-by-step instructions covering repo creation, sample app development, SARIF converters, workshop labs, Power BI PBIP, and ADO pipeline setup.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
