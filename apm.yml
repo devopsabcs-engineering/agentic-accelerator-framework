@@ -52,6 +52,11 @@ dependencies:
     path: agents/test-generator.agent.md
     description: "Test case generator targeting uncovered code paths"
 
+  # ── Scaffolding Agents ───────────────────────────────────────────────
+  domain-scaffolder:
+    path: agents/domain-scaffolder.agent.md
+    description: "Domain repository scaffolder — generates demo-app and workshop repos with full parity"
+
   # ── FinOps / Cost Analysis Agents ────────────────────────────────────
   cost-analysis-agent:
     path: agents/cost-analysis-agent.agent.md
@@ -86,6 +91,10 @@ dependencies:
     path: instructions/code-quality.instructions.md
     description: "Code quality rules — coverage thresholds, complexity metrics, linting"
 
+  domain-scaffolding:
+    path: instructions/domain-scaffolding.instructions.md
+    description: "Conventions for scaffolding new domain scanner and workshop repositories"
+
   # ── Prompts ──────────────────────────────────────────────────────────
   a11y-scan:
     path: prompts/a11y-scan.prompt.md
@@ -95,6 +104,18 @@ dependencies:
     path: prompts/a11y-fix.prompt.md
     description: "Prompt template for accessibility remediation workflow"
 
+  code-quality-scan:
+    path: prompts/code-quality-scan.prompt.md
+    description: "Prompt template for code quality scanning workflow"
+
+  code-quality-fix:
+    path: prompts/code-quality-fix.prompt.md
+    description: "Prompt template for code quality fix workflow"
+
+  scaffold-domain:
+    path: prompts/scaffold-domain.prompt.md
+    description: "Prompt template for domain repository scaffolding"
+
   # ── Skills ───────────────────────────────────────────────────────────
   a11y-scan-skill:
     path: skills/a11y-scan/SKILL.md
@@ -103,6 +124,14 @@ dependencies:
   security-scan-skill:
     path: skills/security-scan/SKILL.md
     description: "On-demand security scanning skill"
+
+  code-quality-scan-skill:
+    path: skills/code-quality-scan/SKILL.md
+    description: "On-demand code quality scanning skill"
+
+  domain-scaffolding-skill:
+    path: skills/domain-scaffolding/SKILL.md
+    description: "Domain scaffolding templates and patterns skill"
 
 security:
   audit:

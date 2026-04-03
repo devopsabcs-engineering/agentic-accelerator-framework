@@ -37,6 +37,7 @@ const DOMAIN_MAP = {
     'DeploymentCostGateAgent',
     'FinOpsGovernanceAgent',
   ],
+  Scaffolding: ['DomainScaffolder'],
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

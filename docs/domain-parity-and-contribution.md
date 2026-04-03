@@ -504,6 +504,8 @@ Both PBIPs source data from Azure Blob Storage (not ADLS Gen 2 as originally spe
 
 This section provides a step-by-step guide for adding a new scanning domain to the framework. We use **Code Quality** as a concrete example.
 
+> **Automated scaffolding**: Use the `DomainScaffolder` agent via the `/scaffold-domain` prompt to automate repo structure generation for new domains. The scaffolder loads `skills/domain-scaffolding/SKILL.md` for structural templates and produces both the demo-app and workshop repo structures with full parity to existing domains.
+
 ### Step 1: Define the Domain Scope
 
 Identify:
@@ -853,3 +855,11 @@ The `agentic-accelerator-framework` already defines these Code Quality assets th
 | Test Generator agent | `agents/test-generator.agent.md` | Generates tests for uncovered functions, verifies coverage improvement |
 | Code Quality instructions | `instructions/code-quality.instructions.md` | Coverage thresholds, complexity limits, testing patterns, CI quality gate |
 | Quality ADO pipeline sample | `samples/azure-devops/quality-pipeline.yml` | Sample ADO pipeline for lint, type check, test, coverage |
+| Code Quality Scan skill | `skills/code-quality-scan/SKILL.md` | 4-tool architecture, MegaLinter orchestration, SARIF output, severity mapping |
+| Code Quality Scan prompt | `prompts/code-quality-scan.prompt.md` | Runs code quality analysis via CodeQualityDetector agent |
+| Code Quality Fix prompt | `prompts/code-quality-fix.prompt.md` | Fixes code quality violations via TestGenerator agent |
+| Domain Scaffolder agent | `agents/domain-scaffolder.agent.md` | Scaffolds new domain repos with full parity to existing domains |
+| Domain Scaffolding skill | `skills/domain-scaffolding/SKILL.md` | Repo structure templates, bootstrap scripts, screenshot automation, PBIP schemas |
+| Scaffold Domain prompt | `prompts/scaffold-domain.prompt.md` | Triggers domain scaffolding via DomainScaffolder agent |
+| Domain Scaffolding instructions | `instructions/domain-scaffolding.instructions.md` | Conventions for scaffolding new domain repositories |
+| Quality GH Actions sample | `samples/github-actions/code-quality-scan.yml` | GitHub Actions workflow for lint, complexity, duplication, coverage |

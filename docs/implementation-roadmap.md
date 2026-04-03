@@ -83,7 +83,7 @@ The Detector and Resolver agent pair demonstrates the handoff pattern: the Detec
 
 | Attribute | Detail |
 |---|---|
-| Status | Active — agents defined, coverage gate implemented |
+| Status | Active — agents defined, coverage gate implemented, domain skill and scaffolding artifacts created |
 | Agents | CodeQualityDetector, TestGenerator |
 | SARIF Category | `code-quality/coverage/` |
 
@@ -114,6 +114,10 @@ Follows the Detector and Resolver pattern from Accessibility:
 ### Actions
 
 - Agent definitions (`code-quality-detector.agent.md` and `test-generator.agent.md`) are in place
+- Domain skill (`skills/code-quality-scan/SKILL.md`) documents the 4-tool architecture with MegaLinter orchestration
+- Scan and fix prompts (`code-quality-scan.prompt.md`, `code-quality-fix.prompt.md`) route to existing agents
+- Domain scaffolding system (`DomainScaffolder` agent, `domain-scaffolding/SKILL.md`, `scaffold-domain.prompt.md`) enables automated repo creation
+- GitHub Actions sample (`samples/github-actions/code-quality-scan.yml`) provides CI workflow template
 - Roll out organization-wide via `.github-private` using `deploy-to-github-private.yml`
 - Refine coverage-to-SARIF converter
 - Enforce quality gate workflow (`code-quality.yml`) in CI
