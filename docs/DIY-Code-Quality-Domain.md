@@ -21,15 +21,38 @@ This guide walks you through creating the Code Quality domain's two repositories
 
 Create both repositories in the `devopsabcs-engineering` organization:
 
+**PowerShell:**
+
+```powershell
+# Scanner demo-app repository
+gh repo create devopsabcs-engineering/code-quality-scan-demo-app `
+  --public `
+  --description "Code Quality scanner demo-app with 5 sample apps, CI/CD, SARIF, and Power BI PBIP"
+
+# Workshop repository (as template)
+gh repo create devopsabcs-engineering/code-quality-scan-workshop `
+  --public `
+  --template `
+  --description "Hands-on Code Quality scanning workshop with 10 labs"
+```
+
+<details>
+<summary>Bash equivalent</summary>
+
 ```bash
 # Scanner demo-app repository
 gh repo create devopsabcs-engineering/code-quality-scan-demo-app \
-  --public --description "Code Quality scanner demo-app with 5 sample apps, CI/CD, SARIF, and Power BI PBIP"
+  --public \
+  --description "Code Quality scanner demo-app with 5 sample apps, CI/CD, SARIF, and Power BI PBIP"
 
 # Workshop repository (as template)
 gh repo create devopsabcs-engineering/code-quality-scan-workshop \
-  --public --template --description "Hands-on Code Quality scanning workshop with 10 labs"
+  --public \
+  --template \
+  --description "Hands-on Code Quality scanning workshop with 10 labs"
 ```
+
+</details>
 
 ## Step 2: Scaffold the Demo-App Repository
 
@@ -89,6 +112,8 @@ Both converters must produce SARIF v2.1.0 with `automationDetails.id` prefixed w
 
 Provision Azure AD federation, GitHub secrets, and environments:
 
+**PowerShell:**
+
 ```powershell
 # Set up Azure AD app registration and federated credentials
 ./scripts/setup-oidc.ps1
@@ -100,6 +125,23 @@ Provision Azure AD federation, GitHub secrets, and environments:
 ./scripts/setup-oidc-ado.ps1
 ./scripts/bootstrap-demo-apps-ado.ps1
 ```
+
+<details>
+<summary>Bash equivalent</summary>
+
+```bash
+# Set up Azure AD app registration and federated credentials
+pwsh ./scripts/setup-oidc.ps1
+
+# Create demo app repos, push content, configure secrets and environments
+pwsh ./scripts/bootstrap-demo-apps.ps1
+
+# (Optional) Set up ADO project, repos, variable groups, and WIF
+pwsh ./scripts/setup-oidc-ado.ps1
+pwsh ./scripts/bootstrap-demo-apps-ado.ps1
+```
+
+</details>
 
 ## Step 7: Write the 10 Workshop Labs
 
