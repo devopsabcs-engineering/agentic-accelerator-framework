@@ -295,6 +295,8 @@ Creates GitHub repositories, pushes initial content, and configures secrets.
 4. Create GitHub environments (`dev`, `prod`).
 5. Create repository wiki with setup documentation.
 6. Enable GitHub Advanced Security features.
+7. **Set OIDC secrets on the scanner repo** (`{domain}-scan-demo-app`) — the `deploy-all.yml` workflow runs there.
+8. Create the `prod` environment on the scanner repo.
 
 ### bootstrap-demo-apps-ado.ps1 — ADO Repository Bootstrap
 
@@ -364,9 +366,23 @@ $existingCreds = az ad app federated-credential list --id $appId --query "[].nam
 if ($existingCreds -contains $credName) {
     Write-Host "Federated credential '$credName' already exists — skipping." -ForegroundColor Yellow
 } else {
-    az ad app federated-credential create --id $appId --parameters $credParams
+    # IMPORTANT: Write JSON to temp file — PowerShell mangles inline ConvertTo-Json
+    $credParams = @{
+        name      = $credName
+        issuer    = "https://token.actions.githubusercontent.com"
+        subject   = $subject
+        audiences = @("api://AzureADTokenExchange")
+    }
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    $credParams | ConvertTo-Json | Set-Content -Path $tempFile -Encoding UTF8
+    az ad app federated-credential create --id $appId --parameters "@$tempFile"
+    Remove-Item -Path $tempFile -Force
 }
 ```
+
+> **Lesson Learned**: Never pass `ConvertTo-Json -Compress` output inline to `az` CLI in PowerShell. The quotes get mangled by PowerShell's argument parser. Always write to a temp file and pass `@$tempFile`.
+
+> **Credential Limit**: Azure AD apps have a maximum of **20 federated identity credentials**. With 6 repos × 3 subjects (main/dev/prod) = 18 credentials, plan accordingly. Each domain MUST use its own dedicated app registration.
 
 #### Service Principal Guard
 
@@ -622,9 +638,9 @@ Path pattern: {yyyy}/{MM}/{dd}/{appId}-{tool}.json
 
 ## Individual Demo App Deploy Workflow Template
 
-Each individual demo app repository (`{prefix}-demo-app-NNN`) includes a `.github/workflows/deploy.yml` that deploys the app to Azure App Service.
+Each individual demo app repository (`{prefix}-demo-app-NNN`) includes a `.github/workflows/deploy.yml` that deploys the app as a **Docker container** to Azure Web App for Containers. All 5 languages use the same containerized deployment pattern — no language-specific build steps in the workflow.
 
-### Base Template
+### Base Template (Containerized)
 
 ```yaml
 name: Deploy
@@ -646,7 +662,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: prod
     steps:
       - uses: actions/checkout@v4
 
@@ -661,104 +677,179 @@ jobs:
         run: az group create --name ${{ env.AZURE_RG }} --location ${{ env.LOCATION }}
 
       - name: Deploy Infrastructure
+        id: infra
         run: |
-          az deployment group create \
+          outputs=$(az deployment group create \
             --resource-group ${{ env.AZURE_RG }} \
             --template-file infra/main.bicep \
-            --parameters appName=${{ env.APP_NAME }}
+            --parameters appName=${{ env.APP_NAME }} \
+            --query 'properties.outputs' -o json)
+          echo "acrName=$(echo $outputs | jq -r '.acrName.value')" >> $GITHUB_OUTPUT
+          echo "appServiceName=$(echo $outputs | jq -r '.appServiceName.value')" >> $GITHUB_OUTPUT
 
-      # Language-specific build step — see variants below
+      - name: Build and Push to ACR
+        run: |
+          az acr build \
+            --registry ${{ steps.infra.outputs.acrName }} \
+            --image ${{ env.APP_NAME }}:${{ github.sha }} \
+            --image ${{ env.APP_NAME }}:latest \
+            .
 
-      - name: Deploy to App Service
+      - name: Deploy to Web App for Containers
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.APP_NAME }}
-          # package or images parameter per language
+          app-name: ${{ steps.infra.outputs.appServiceName }}
+          images: ${{ steps.infra.outputs.acrName }}.azurecr.io/${{ env.APP_NAME }}:${{ github.sha }}
 
       - name: Health Check
         run: |
-          APP_URL=$(az webapp show -g ${{ env.AZURE_RG }} -n ${{ env.APP_NAME }} --query defaultHostName -o tsv)
-          curl -sf "https://$APP_URL" || exit 1
+          APP_URL=$(az webapp show -g ${{ env.AZURE_RG }} -n ${{ steps.infra.outputs.appServiceName }} --query defaultHostName -o tsv)
+          sleep 30
+          curl -sf --retry 5 --retry-delay 10 "https://$APP_URL" || exit 1
 
       - name: Summary
         run: |
-          APP_URL=$(az webapp show -g ${{ env.AZURE_RG }} -n ${{ env.APP_NAME }} --query defaultHostName -o tsv)
+          APP_URL=$(az webapp show -g ${{ env.AZURE_RG }} -n ${{ steps.infra.outputs.appServiceName }} --query defaultHostName -o tsv)
           echo "### ✅ ${{ env.APP_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "Deployed to: https://$APP_URL" >> $GITHUB_STEP_SUMMARY
 ```
 
-### Language-Specific Build Steps
+### Why Containerized Deployment?
 
-#### C# (.NET)
+1. **Language-agnostic**: All 5 languages deploy identically — no language-specific build steps in CI.
+2. **Go compatibility**: Azure App Service Oryx cannot auto-detect Go apps. Containers solve this.
+3. **Production-realistic**: Students learn container-based deployment, which is the industry standard.
+4. **Codespace-ready**: Students can `docker build && docker run` locally without Azure.
 
-```yaml
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-      - name: Build
-        run: dotnet publish -c Release -o ./publish
+### Bicep Template for Web App for Containers
+
+Every demo app's `infra/main.bicep` MUST provision ACR + Web App for Containers with globally unique names:
+
+```bicep
+@description('Logical app name used for resource naming')
+param appName string
+
+@description('Azure region for all resources')
+param location string = resourceGroup().location
+
+var suffix = uniqueString(resourceGroup().id)
+var acrName = 'acr${suffix}'
+var appServicePlanName = 'plan-${appName}-${suffix}'
+var appServiceName = '${appName}-${suffix}'
+
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+  name: acrName
+  location: location
+  sku: {
+    name: 'Basic'
+  }
+  properties: {
+    adminUserEnabled: true
+  }
+}
+
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+  name: appServicePlanName
+  location: location
+  kind: 'linux'
+  sku: {
+    name: 'B1'
+    tier: 'Basic'
+  }
+  properties: {
+    reserved: true
+  }
+}
+
+resource webApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: appServiceName
+  location: location
+  kind: 'app,linux,container'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${acr.properties.loginServer}/${appName}:latest'
+      appSettings: [
+        {
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://${acr.properties.loginServer}'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+          value: acr.listCredentials().username
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+          value: acr.listCredentials().passwords[0].value
+        }
+        {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'false'
+        }
+      ]
+    }
+  }
+}
+
+output acrName string = acr.name
+output acrLoginServer string = acr.properties.loginServer
+output appServiceName string = webApp.name
+output appUrl string = 'https://${webApp.properties.defaultHostName}'
 ```
 
-#### Python
-
-```yaml
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
-```
-
-#### Java (Gradle)
-
-```yaml
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Build
-        run: ./gradlew build
-```
-
-#### TypeScript (Node.js)
-
-```yaml
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install and Build
-        run: |
-          npm ci
-          npm run build
-```
-
-#### Go
-
-```yaml
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Build
-        run: go build -o ./app .
-```
+> **Note**: `uniqueString(resourceGroup().id)` generates a 13-character deterministic hash. This ensures multiple students using different resource groups get unique names without collisions.
 
 ## Sample App Specification
 
-Each domain deploys **5 sample apps**, one per language/framework. Every app contains intentional violations that the domain scanner detects.
+Each domain deploys **5 sample apps**, one per language/framework. Every app contains intentional violations that the domain scanner detects. All apps are deployed as **Docker containers** to Azure Web App for Containers.
 
 ### App Structure
 
 | Component | Required | Description |
 |-----------|----------|-------------|
 | `src/` | Yes | Application source with intentional domain violations |
-| `infra/main.bicep` | Yes | Azure deployment infrastructure (App Service or Container App) |
-| `Dockerfile` | Yes | Container build definition |
-| `README.md` | Yes | App description and violation summary |
+| `infra/main.bicep` | Yes | Azure deployment infrastructure (ACR + Web App for Containers with `uniqueString`) |
+| `Dockerfile` | Yes | Multi-stage container build definition |
+| `README.md` | Yes | App description, violation summary, and "Run Locally" instructions |
+
+### Dockerfile Requirements
+
+Every `Dockerfile` MUST:
+
+1. Use multi-stage builds where appropriate (build stage + runtime stage)
+2. Expose the app port (see port conventions below)
+3. Be optimized for Docker layer caching (copy dependency files first, then source)
+4. Work in GitHub Codespaces via `docker build -t app . && docker run -p PORT:PORT app`
+
+### Port Conventions
+
+| Language | Framework | Container Port |
+|----------|-----------|---------------|
+| TypeScript | Next.js / Express | 3000 |
+| Python | Flask / FastAPI | 5000 |
+| C# | ASP.NET Core | 8080 |
+| Java | Spring Boot | 8080 |
+| Go | Gin / net/http | 8080 |
+
+### Run Locally Section
+
+Every demo app `README.md` MUST include a "Run Locally" section:
+
+```markdown
+## Run Locally
+
+Build and run with Docker (works in GitHub Codespaces):
+
+\`\`\`bash
+docker build -t {prefix}-demo-app-{NNN} .
+docker run -p {PORT}:{PORT} {prefix}-demo-app-{NNN}
+\`\`\`
+
+Open http://localhost:{PORT} in your browser.
+```
 
 ### Violation Density
 
@@ -966,14 +1057,17 @@ Proceed to [Lab {NN+1}: {Next Title}](../lab-{NN+1}-{next-slug}/).
 
 After content is pushed, configure these repository-level settings via bootstrap scripts or manual setup.
 
-### Demo App Repository
+### Demo App Repository (Scanner)
 
 | Setting | Command | Required |
 |---------|---------|----------|
 | Description | `gh repo edit "$Org/$Repo" --description "$Desc"` | Yes |
 | Topics | `gh repo edit "$Org/$Repo" --add-topic $topic` (loop) | Yes |
 | Code scanning | `gh api repos/$Org/$Repo/code-scanning/default-setup -X PATCH -f state=configured` | Yes |
-| Environments | `gh api repos/$Org/$Repo/environments/production --method PUT` | Yes |
+| Environment | `gh api repos/$Org/$Repo/environments/prod --method PUT` | Yes |
+| OIDC secrets | `gh secret set AZURE_CLIENT_ID --body $clientId -R "$Org/$Repo"` | Yes |
+
+> **Important**: The scanner repo needs OIDC secrets and the `prod` environment because `deploy-all.yml` runs there.
 
 ### Workshop Repository
 
@@ -992,7 +1086,9 @@ After content is pushed, configure these repository-level settings via bootstrap
 | Description | `gh repo edit "$Org/$Repo" --description "$Desc"` | Yes |
 | Topics | `gh repo edit "$Org/$Repo" --add-topic $topic` (loop) | Yes |
 | Secrets | `gh secret set AZURE_CLIENT_ID --body $clientId -R "$Org/$Repo"` | Yes |
-| Environments | `gh api repos/$Org/$Repo/environments/production --method PUT` | Yes |
+| Environment | `gh api repos/$Org/$Repo/environments/prod --method PUT` | Yes |
+
+> **Note**: Use `prod` (not `production`) for all environments. This MUST match the OIDC federated credential subject.
 
 ### Resource Group Strategy
 
@@ -1007,9 +1103,51 @@ rg-{prefix}-demo-005
 
 This enables independent teardown and cost tracking per app.
 
+## GitHub Pages / Jekyll Configuration
+
+Workshop repositories use Jekyll via GitHub Pages. These settings are critical for correct rendering.
+
+### _config.yml Template
+
+```yaml
+title: "{Domain Display Name} Scan Workshop"
+description: "Hands-on workshop for {domain} scanning with GitHub Copilot agents"
+remote_theme: just-the-docs/just-the-docs
+baseurl: "/{domain}-scan-workshop"
+url: "https://devopsabcs-engineering.github.io"
+
+nav_order: 1
+search_enabled: true
+```
+
+> **Critical**: Use `remote_theme: just-the-docs/just-the-docs` (NOT `theme: just-the-docs`). The `theme` key only works for locally installed gems, not GitHub Pages.
+
+> **Critical**: Set `baseurl: "/{repo-name}"` for project sites. An empty `baseurl` causes 404s on asset loading.
+
+### Gemfile Template
+
+```ruby
+source "https://rubygems.org"
+gem "github-pages", group: :jekyll_plugins
+```
+
+> Do NOT use `gem "jekyll"` or `gem "just-the-docs"` directly. The `github-pages` gem bundles all compatible dependencies for GitHub Pages deployment.
+
 ## DevContainer Template Updates
 
-The workshop DevContainer's `post-create.sh` MUST automatically set up the scanner demo-app as a sibling directory for workshop participants.
+The workshop DevContainer's `post-create.sh` MUST automatically set up the scanner demo-app as a sibling directory for workshop participants. The `devcontainer.json` MUST include Docker-in-Docker support for local container builds.
+
+### devcontainer.json Docker-in-Docker
+
+The workshop `devcontainer.json` MUST include the Docker-in-Docker feature so students can build and run demo app containers locally:
+
+```json
+{
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  }
+}
+```
 
 ### post-create.sh Template
 

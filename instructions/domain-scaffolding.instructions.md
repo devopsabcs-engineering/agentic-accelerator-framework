@@ -215,25 +215,25 @@ Each sample app directory (`{prefix}-demo-app-001` through `005`) is pushed to i
 
 ### Deploy Workflow Requirements
 
+Every per-app deploy.yml MUST use **containerized deployment** (Web App for Containers). Do NOT use Oryx-based source deployment — it fails for Go and is fragile for other languages. The container approach works identically for all 5 languages and mirrors production deployment patterns.
+
 Every per-app deploy.yml MUST include these stages:
 
 1. **Azure Login** — OIDC federated credential login (`azure/login@v2`)
 2. **Resource Group** — Create or verify resource group via `az group create`
-3. **Infrastructure** — Deploy `infra/main.bicep` via `az deployment group create`
-4. **Build** — Language-specific build step (see table below)
-5. **Deploy** — Deploy to Azure App Service or Container App
+3. **Infrastructure** — Deploy `infra/main.bicep` via `az deployment group create` (provisions ACR + Web App for Containers)
+4. **Build & Push** — Build Docker image and push to ACR via `az acr build`
+5. **Deploy** — Deploy container to Web App for Containers via `azure/webapps-deploy@v3` with `images:` parameter
 6. **Health Check** — Verify the deployed app responds with HTTP 200
 7. **Summary** — Write deployed URL and status to `$GITHUB_STEP_SUMMARY`
 
 ### Language-Specific Build Steps
 
-| Language | Build Command | Output |
-|----------|---------------|--------|
-| C# | `dotnet publish -c Release -o ./publish` | `./publish/` directory |
-| Python | `pip install -r requirements.txt` | In-place |
-| Java | `.\gradlew.bat build` (or `mvn package`) | `build/libs/*.jar` or `target/*.jar` |
-| TypeScript | `npm ci && npm run build` | `dist/` or `.next/` directory |
-| Go | `go build -o ./app .` | `./app` binary |
+Language-specific build steps are **no longer needed** in the deploy workflow because all apps are built via `docker build` using their `Dockerfile`. Each demo app MUST include a production-ready `Dockerfile`.
+
+### Deploy Workflow Environment Name
+
+All deploy workflows MUST use `environment: prod` (not `production`). This MUST match the OIDC federated credential subject: `repo:{org}/{repo}:environment:prod`. Mismatched environment names cause OIDC login failures.
 
 ### Workflow Permissions
 
@@ -242,6 +242,151 @@ permissions:
   id-token: write
   contents: read
 ```
+
+## Global Uniqueness via Bicep `uniqueString()`
+
+Many workshop students deploy simultaneously to the same Azure subscription. All globally-scoped Azure resource names MUST include `uniqueString(resourceGroup().id)` in Bicep to avoid naming collisions.
+
+### Resources Requiring Global Uniqueness
+
+| Resource | Name Pattern | Bicep Expression |
+|----------|-------------|-----------------|
+| ACR | `acr{uniqueString}` | `'acr${uniqueString(resourceGroup().id)}'` |
+| App Service | `{appName}-{uniqueString}` | `'${appName}-${uniqueString(resourceGroup().id)}'` |
+| App Service Plan | `plan-{appName}-{uniqueString}` | `'plan-${appName}-${uniqueString(resourceGroup().id)}'` |
+| Storage Account | `st{uniqueString}` | `'st${uniqueString(resourceGroup().id)}'` |
+
+### Bicep Template Structure
+
+Every `infra/main.bicep` MUST:
+
+1. Accept a `appName` parameter for logical identification
+2. Use `uniqueString(resourceGroup().id)` for all globally-scoped names
+3. Provision **ACR** + **App Service Plan** (Linux) + **Web App for Containers**
+4. Output the computed ACR name, app name, and default hostname for use by the deploy workflow
+5. Use `linuxFxVersion: 'DOCKER|${acrName}.azurecr.io/${appName}:latest'` for container configuration
+
+### Deploy Workflow Deriving Names from Bicep Outputs
+
+Deploy workflows MUST read ACR name and app name from Bicep deployment outputs rather than hardcoding them:
+
+```yaml
+- name: Deploy Infrastructure
+  id: infra
+  run: |
+    outputs=$(az deployment group create \
+      --resource-group ${{ env.AZURE_RG }} \
+      --template-file infra/main.bicep \
+      --parameters appName=${{ env.APP_NAME }} \
+      --query 'properties.outputs' -o json)
+    echo "acrName=$(echo $outputs | jq -r '.acrName.value')" >> $GITHUB_OUTPUT
+    echo "appServiceName=$(echo $outputs | jq -r '.appServiceName.value')" >> $GITHUB_OUTPUT
+```
+
+## Containerized Deployment Conventions
+
+### Dockerfile Requirements
+
+Every demo app MUST include a `Dockerfile` that:
+
+1. Uses a multi-stage build where appropriate (e.g., build stage + runtime stage)
+2. Exposes a PORT (default `3000` for Node, `5000` for Python, `8080` for Java/Go/.NET)
+3. Sets a `HEALTHCHECK` instruction or relies on the App Service health probe
+4. Is optimized for layer caching (dependencies before source code)
+
+### ACR Build Pattern
+
+Use `az acr build` instead of `docker build` + `docker push` — it avoids needing Docker-in-Docker in GitHub Actions runners:
+
+```yaml
+- name: Build and Push to ACR
+  run: |
+    az acr build \
+      --registry ${{ steps.infra.outputs.acrName }} \
+      --image ${{ env.APP_NAME }}:${{ github.sha }} \
+      --image ${{ env.APP_NAME }}:latest \
+      .
+```
+
+### Web App Container Deploy
+
+```yaml
+- name: Deploy to Web App
+  uses: azure/webapps-deploy@v3
+  with:
+    app-name: ${{ steps.infra.outputs.appServiceName }}
+    images: ${{ steps.infra.outputs.acrName }}.azurecr.io/${{ env.APP_NAME }}:${{ github.sha }}
+```
+
+## Codespace-First Philosophy
+
+All demo apps MUST be runnable and testable inside GitHub Codespaces without Azure deployment. This provides a zero-cost, zero-config development experience for workshop participants.
+
+### Requirements
+
+1. Every demo app MUST include a `README.md` section titled "Run Locally" with:
+   ```bash
+   docker build -t {prefix}-demo-app-NNN .
+   docker run -p 3000:3000 {prefix}-demo-app-NNN
+   ```
+2. Workshop lab instructions SHOULD include a "Run Locally in Codespace" alternative for each deploy step
+3. The workshop `.devcontainer/devcontainer.json` MUST include Docker-in-Docker feature for local builds
+
+## OIDC Script Conventions
+
+### JSON Quoting Fix
+
+When passing JSON to Azure CLI from PowerShell, NEVER use inline `ConvertTo-Json -Compress`. PowerShell mangles the quotes when interpolating. Always write to a temp file:
+
+```powershell
+$credParams = @{
+    name      = $credName
+    issuer    = "https://token.actions.githubusercontent.com"
+    subject   = $subject
+    audiences = @("api://AzureADTokenExchange")
+}
+$tempFile = [System.IO.Path]::GetTempFileName()
+$credParams | ConvertTo-Json | Set-Content -Path $tempFile -Encoding UTF8
+az ad app federated-credential create --id $appId --parameters "@$tempFile"
+Remove-Item -Path $tempFile -Force
+```
+
+### Per-Domain OIDC App Registration
+
+Azure AD federated identity credentials have a **maximum of 20 per app**. With 6+ repos × 3 subjects (main/dev/prod) = 18+, a shared OIDC app across domains will hit this limit. Each domain MUST create its own dedicated app registration.
+
+### Scanner Repo Secrets
+
+The `deploy-all.yml` workflow runs on the scanner repo (`{domain}-scan-demo-app`). The OIDC setup and bootstrap scripts MUST also:
+
+1. Set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` secrets on the scanner repo
+2. Create the `prod` environment on the scanner repo
+3. Add federated credentials for `repo:{org}/{domain}-scan-demo-app:environment:prod`
+
+## GitHub Pages Configuration (Workshop)
+
+### Jekyll Config
+
+Workshop `_config.yml` MUST use these settings for project sites:
+
+```yaml
+remote_theme: just-the-docs/just-the-docs
+baseurl: "/{repo-name}"    # MUST be /{repo-name} for project sites, NOT empty string
+url: "https://{org}.github.io"
+```
+
+Do NOT use `theme: just-the-docs` — it only works locally. Use `remote_theme` for GitHub Pages compatibility.
+
+### Gemfile
+
+Workshop `Gemfile` MUST use the `github-pages` gem:
+
+```ruby
+source "https://rubygems.org"
+gem "github-pages", group: :jekyll_plugins
+```
+
+Do NOT use `gem "jekyll"` or `gem "just-the-docs"` directly — they may not be compatible with GitHub Pages.
 
 ## Repository Metadata
 

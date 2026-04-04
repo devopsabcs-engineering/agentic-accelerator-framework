@@ -81,8 +81,10 @@ Generate the complete `{domain}-scan-demo-app` repository structure following th
 8. Create `infra/storage.bicep` for ADLS Gen2 storage.
 9. Create `docs/` with overview, Power BI data model, and workshop setup documentation.
 10. Create `README.md` with project overview.
-11. Generate `.github/workflows/deploy.yml` for each demo app directory. Each deploy workflow MUST include: OIDC login, resource group creation via Bicep, language-specific build step, App Service deployment, health check, and `GITHUB_STEP_SUMMARY` output. Use the per-language deploy workflow template from the scaffolding skill.
-12. Include repository metadata in bootstrap scripts: set topics array, repository description, and enable GitHub Advanced Security code scanning for each demo app repo. Follow the repository metadata conventions from the scaffolding instructions.
+11. Generate `.github/workflows/deploy.yml` for each demo app directory. Each deploy workflow MUST use **containerized deployment**: Docker build → ACR push → Web App for Containers deploy. Include: OIDC login, resource group creation via Bicep, `az acr build`, deploy to Web App for Containers via `azure/webapps-deploy@v3` with `images:` parameter, health check, and `GITHUB_STEP_SUMMARY` output. Use the container deploy workflow template from the scaffolding skill.
+12. All `infra/main.bicep` files MUST use `uniqueString(resourceGroup().id)` for globally-scoped resource names (ACR, App Service, App Service Plan). Bicep MUST provision ACR + Web App for Containers (Linux, Docker), not Oryx code-deploy App Service.
+13. Include repository metadata in bootstrap scripts: set topics array, repository description, enable GitHub Advanced Security code scanning for each demo app repo, and **set OIDC secrets on the scanner repo** in addition to individual app repos. Follow the repository metadata conventions from the scaffolding instructions.
+14. All demo apps MUST be runnable locally in GitHub Codespaces via `docker build -t app . && docker run -p 3000:3000 app` without requiring Azure deployment.
 
 ### Step 5: Generate Workshop Repository
 
@@ -110,6 +112,8 @@ Configure repository-level settings that must be applied after content is pushed
 3. Set **repository description** on both repos using `gh repo edit --description`.
 4. Set **repository topics** on both repos using `gh repo edit --add-topic` for each topic in the domain topics array.
 5. Set the **website URL** on the workshop repo to its GitHub Pages URL.
+6. Set **OIDC secrets** (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`) on the **scanner repo** — the `deploy-all.yml` runs there.
+7. Create the **`prod` environment** on the scanner repo (not `production` — match the federated credential subject).
 
 ### Step 7: Produce Summary
 
@@ -156,9 +160,73 @@ After scaffolding is complete:
 - Hand off to **CodeQualityDetector** to scan generated sample apps and verify they contain sufficient intentional violations (minimum 15 findings per app).
 - Hand off to **TestGenerator** to generate initial test suites for the sample apps to establish baseline coverage metrics.
 
+## Lessons Learned from Prior Iterations
+
+Apply these lessons when scaffolding any new domain. These were discovered during the Code Quality domain scaffolding and MUST be codified in all generated artifacts.
+
+### 1. Container-First Deployment (Web App for Containers)
+
+All 5 demo apps MUST deploy as **Docker containers** to Azure Web App for Containers. Do NOT use Oryx-based source deployment — it fails for Go and is fragile for other languages. The uniform container approach works for all languages and mirrors production patterns.
+
+- Every demo app already has a `Dockerfile` — use it as the deployment artifact.
+- Use Azure Container Registry (ACR) to push images, then deploy via `azure/webapps-deploy@v3` with the `images` parameter.
+- The ACR name MUST use Bicep `uniqueString(resourceGroup().id)` for global uniqueness.
+
+### 2. Global Uniqueness via Bicep `uniqueString()`
+
+Many students run workshops simultaneously. All globally-scoped Azure resource names MUST include `uniqueString(resourceGroup().id)` to avoid collisions:
+
+- **ACR**: `acr${uniqueString(resourceGroup().id)}` (3–50 chars, alphanumeric only)
+- **App Service**: `${appName}-${uniqueString(resourceGroup().id)}`
+- **App Service Plan**: `plan-${appName}-${uniqueString(resourceGroup().id)}`
+- **Storage Account**: `st${uniqueString(resourceGroup().id)}` (3–24 chars, alphanumeric only)
+
+### 3. OIDC JSON Quoting in PowerShell
+
+When passing JSON to Azure CLI from PowerShell, NEVER use inline `ConvertTo-Json -Compress`. PowerShell mangles the quotes. Always write to a temp file and pass `@$tempFile`:
+
+```powershell
+$credParams = @{ name = $credName; issuer = $issuer; subject = $subject; audiences = @($audience) }
+$tempFile = [System.IO.Path]::GetTempFileName()
+$credParams | ConvertTo-Json | Set-Content -Path $tempFile -Encoding UTF8
+az ad app federated-credential create --id $appId --parameters "@$tempFile"
+Remove-Item -Path $tempFile -Force
+```
+
+### 4. Consistent Environment Names
+
+OIDC federated credentials and GitHub Actions workflows MUST use the same environment name. Standardize on `prod` (not `production`):
+
+- Federated credential subject: `repo:{org}/{repo}:environment:prod`
+- Workflow: `environment: prod`
+- GitHub environment: `gh api repos/{org}/{repo}/environments/prod --method PUT`
+
+### 5. Secrets on Scanner Repo
+
+The `deploy-all.yml` workflow runs on the **scanner repo** (`{domain}-scan-demo-app`), not on individual demo app repos. The bootstrap script MUST also set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` on the scanner repo itself, and create the `prod` environment there.
+
+### 6. GitHub Pages Configuration
+
+For project sites (non-org pages), workshop `_config.yml` MUST:
+
+- Set `baseurl: "/{repo-name}"` (not empty string)
+- Use `remote_theme: just-the-docs/just-the-docs` (not `theme: just-the-docs`)
+- Use `github-pages` gem (not `jekyll` gem directly) in the `Gemfile`
+
+### 7. Codespace-First Philosophy
+
+All demo apps MUST be runnable and testable inside GitHub Codespaces without Azure deployment. Students can always `docker build` and `docker run` locally in a Codespace. Lab instructions SHOULD include a "Run Locally" alternative for each deploy step.
+
+### 8. Per-Domain OIDC App Registration
+
+Azure AD federated identity credentials have a **maximum of 20 per app**. Do NOT share a single OIDC app across multiple domains. Each domain MUST create its own dedicated app registration (e.g., `code-quality-scan-demo-app-oidc`).
+
 ## Conventions
 
 Follow all conventions defined in `instructions/domain-scaffolding.instructions.md` for naming, SARIF standards, bootstrap scripts, CI/CD pipelines, Power BI PBIP, workshop labs, demo app violations, and screenshot automation.
 
 - **PowerShell Only**: All generated commands in screenshot manifests, lab instructions, bootstrap scripts, and CI/CD pipelines MUST use PowerShell Core syntax. Never generate Unix-only commands (`head`, `tail`, `cat`, `2>/dev/null`, `/tmp/`, `./script`).
 - **Idempotent Bootstrap**: All bootstrap scripts MUST be safe to re-run without errors. Every resource creation step MUST check for existing resources before creating.
+- **Container-First**: All demo apps deploy as Docker containers via ACR + Web App for Containers. Never use Oryx source deployment.
+- **Global Uniqueness**: All Azure resource names with global scope MUST use `uniqueString(resourceGroup().id)` in Bicep.
+- **Codespace-Ready**: All demo apps MUST be buildable and runnable in Codespaces via `docker build && docker run`.
