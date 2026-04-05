@@ -15,11 +15,27 @@ keywords:
   - finops
 ---
 
+<p align="center">
+  <img src="assets/branding/logo/logo-256.png" alt="Agentic Accelerator Framework" width="200">
+</p>
+
+<h1 align="center">Agentic Accelerator Framework</h1>
+
+<p align="center">
+  <strong>GitHub Advanced Security + GitHub Copilot Custom Agents + Microsoft Defender for Cloud</strong><br>
+  <em>Shift-left security and compliance across Security, Accessibility, Code Quality, and FinOps</em>
+</p>
+
+<p align="center">
+  <a href="#agent-inventory-15-agents"><img src="https://img.shields.io/badge/agents-15-blue" alt="15 Agents"></a>
+  <a href="#ci-cd-workflows"><img src="https://img.shields.io/badge/SARIF-v2.1.0-green" alt="SARIF v2.1.0"></a>
+  <a href="https://github.com/devopsabcs-engineering/agentic-accelerator-framework/actions"><img src="https://img.shields.io/badge/CI%2FCD-7%20workflows-orange" alt="7 CI/CD Workflows"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="MIT License"></a>
+</p>
+
+---
+
 ## Overview
-
-**Agentic Accelerator = GitHub Advanced Security + GitHub Copilot Custom Agents + Microsoft Defender for Cloud**
-
-*(GitHub preferred; Azure DevOps first-class citizen)*
 
 The Agentic Accelerator Framework provides a repeatable, org-wide approach to shifting security and compliance left using custom GitHub Copilot agents. It covers four domains — Security, Accessibility, Code Quality, and FinOps — with SARIF-based CI/CD integration across GitHub Actions and Azure DevOps.
 

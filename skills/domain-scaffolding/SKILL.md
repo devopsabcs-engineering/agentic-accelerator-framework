@@ -139,6 +139,9 @@ The following directory tree is the canonical structure for any `{domain}-scan-d
 │   ├── {domain}-scan-overview.md
 │   ├── power-bi-data-model.md
 │   └── workshop-setup.md
+├── assets/
+│   └── branding/
+│       └── logo-128.png                         # Framework logo for README
 └── README.md
 ```
 
@@ -196,6 +199,9 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 ├── delivery/
 │   ├── half-day.md                              # 3.5h delivery guide
 │   └── full-day.md                              # 7h delivery guide
+├── assets/
+│   └── branding/
+│       └── logo-128.png                         # Framework logo for workshop header
 ├── CONTRIBUTING.md                              # Workshop contribution guide
 └── README.md
 ```
@@ -1299,3 +1305,69 @@ fi
 ```
 
 The script uses `gh repo fork` with a fallback to `git clone` for environments without GitHub CLI authentication.
+
+## Branding Assets
+
+All generated repositories MUST include the framework logo for consistent branding. Source assets are maintained in the framework repo at `assets/branding/`.
+
+### Available Assets
+
+| Asset | Path | Size | Use Case |
+|-------|------|------|----------|
+| Full transparent logo | `assets/branding/logo/logo-transparent.png` | 1024×1024 | Source / print |
+| Large logo | `assets/branding/logo/logo-512.png` | 512×512 | GitHub org avatar |
+| Medium logo | `assets/branding/logo/logo-256.png` | 256×256 | README headers |
+| Small logo | `assets/branding/logo/logo-128.png` | 128×128 | Inline badges, workshop headers |
+| Icon | `assets/branding/logo/logo-64.png` | 64×64 | Small inline use |
+| Social preview | `assets/branding/social/social-preview-1280x640.png` | 1280×640 | GitHub repo social preview |
+| README banner | `assets/branding/social/readme-banner.png` | 800×200 | README header banner |
+| Favicon ICO | `assets/branding/favicon/favicon.ico` | multi-size | Browser tab icon |
+| Favicon PNG 32 | `assets/branding/favicon/favicon-32x32.png` | 32×32 | Web favicon |
+| Apple touch icon | `assets/branding/favicon/apple-touch-icon.png` | 180×180 | iOS bookmarks |
+
+### Logo Placement Requirements
+
+Every generated repository MUST include the framework logo in these locations:
+
+1. **README.md** — Centered logo at the top of the README, followed by the repo title:
+
+   ```markdown
+   <p align="center">
+     <img src="assets/branding/logo-128.png" alt="Agentic Accelerator Framework" width="100">
+   </p>
+
+   <h1 align="center">{Domain Display Name} Scan {Demo App|Workshop}</h1>
+   ```
+
+2. **GitHub social preview** — Set via `gh repo edit --social-preview assets/branding/social/social-preview-1280x640.png` or upload manually in repo Settings → General → Social preview. The social preview image is stored in the framework repo and should be copied to each generated repo.
+
+3. **Workshop `_includes/head-custom.html`** — Include favicon link alongside the Mermaid script:
+
+   ```html
+   <link rel="icon" type="image/x-icon" href="{{ site.baseurl }}/assets/branding/favicon.ico">
+   <link rel="icon" type="image/png" sizes="32x32" href="{{ site.baseurl }}/assets/branding/favicon-32x32.png">
+   <link rel="apple-touch-icon" sizes="180x180" href="{{ site.baseurl }}/assets/branding/apple-touch-icon.png">
+   ```
+
+4. **Workshop `index.md`** — Logo in the workshop landing page header.
+
+5. **Delivery guides** — Logo at the top of `delivery/half-day.md` and `delivery/full-day.md`.
+
+### Bootstrap Script: Copy Branding Assets
+
+The bootstrap scripts MUST copy branding assets from the framework repo to each generated repository:
+
+```powershell
+# Copy branding assets to generated repos
+$brandingSource = "assets/branding"
+$targetDirs = @("$demoAppDir/assets/branding", "$workshopDir/assets/branding")
+
+foreach ($dir in $targetDirs) {
+    if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force }
+    Copy-Item "$brandingSource/logo/logo-128.png" "$dir/logo-128.png"
+    Copy-Item "$brandingSource/social/social-preview-1280x640.png" "$dir/social-preview-1280x640.png"
+    Copy-Item "$brandingSource/favicon/favicon.ico" "$dir/favicon.ico"
+    Copy-Item "$brandingSource/favicon/favicon-32x32.png" "$dir/favicon-32x32.png"
+    Copy-Item "$brandingSource/favicon/apple-touch-icon.png" "$dir/apple-touch-icon.png"
+}
+```
