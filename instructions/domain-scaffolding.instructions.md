@@ -457,6 +457,110 @@ For workshop repos, enable GitHub Pages after pushing content:
 gh api "repos/$Org/$WorkshopRepo/pages" --method POST -f source='{"branch":"main","path":"/"}'
 ```
 
+## Bidirectional Repository Linking
+
+Every scaffolded domain MUST establish bidirectional links between the framework, workshop, and scanner repos. This ensures discoverability: a user landing on any one repo can navigate to all related repos.
+
+### Framework README Links
+
+The `agentic-accelerator-framework/README.md` MUST contain two sections referencing all domains:
+
+1. **Workshops section** — links to each domain's GitHub Pages site:
+
+   ```markdown
+   ## Workshops
+
+   | Domain | Workshop Site |
+   |--------|---------------|
+   | Accessibility | [Accessibility Scan Workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) |
+   | Code Quality | [Code Quality Scan Workshop](https://devopsabcs-engineering.github.io/code-quality-scan-workshop/) |
+   | FinOps | [FinOps Scan Workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) |
+   ```
+
+2. **Domain Repositories table** — links to both scanner and workshop repos for each domain:
+
+   ```markdown
+   ## Domain Repositories
+
+   | Domain | Scanner Platform | Workshop |
+   |--------|------------------|----------|
+   | Accessibility | [accessibility-scan-demo-app](https://github.com/devopsabcs-engineering/accessibility-scan-demo-app) | [accessibility-scan-workshop](https://github.com/devopsabcs-engineering/accessibility-scan-workshop) |
+   | Code Quality | [code-quality-scan-demo-app](https://github.com/devopsabcs-engineering/code-quality-scan-demo-app) | [code-quality-scan-workshop](https://github.com/devopsabcs-engineering/code-quality-scan-workshop) |
+   | FinOps | [finops-scan-demo-app](https://github.com/devopsabcs-engineering/finops-scan-demo-app) | [finops-scan-workshop](https://github.com/devopsabcs-engineering/finops-scan-workshop) |
+   ```
+
+When scaffolding a new domain, add a row to both tables.
+
+### Workshop `index.md` Links
+
+The workshop landing page (`{domain}-scan-workshop/index.md`) MUST include:
+
+1. A `> [!NOTE]` callout near the top of the page (after the heading):
+
+   ```markdown
+   > [!NOTE]
+   > This workshop is part of the [Agentic Accelerator Framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework).
+   ```
+
+2. A "Related Repositories" table at the bottom:
+
+   ```markdown
+   ## Related Repositories
+
+   | Repository | Description |
+   |------------|-------------|
+   | [agentic-accelerator-framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework) | Framework agents, instructions, and skills |
+   | [{domain}-scan-demo-app](https://github.com/devopsabcs-engineering/{domain}-scan-demo-app) | Scanner platform and demo applications |
+   | [agentic-accelerator-workshop](https://github.com/devopsabcs-engineering/agentic-accelerator-workshop) | Main workshop (all domains) |
+   ```
+
+### Scanner README Links
+
+The scanner repo (`{domain}-scan-demo-app/README.md`) MUST include a "Related Repositories" section at the bottom:
+
+```markdown
+## Related Repositories
+
+| Repository | Description |
+|------------|-------------|
+| [agentic-accelerator-framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework) | Framework agents, instructions, and skills |
+| [{domain}-scan-workshop](https://devopsabcs-engineering.github.io/{domain}-scan-workshop/) | Hands-on workshop (GitHub Pages) |
+| [agentic-accelerator-workshop](https://github.com/devopsabcs-engineering/agentic-accelerator-workshop) | Main workshop (all domains) |
+```
+
+### Workshop `_config.yml` Image Path Exclusion
+
+The workshop `_config.yml` MUST include a `defaults:` scope that sets `nav_exclude: true` for the `images` path. This prevents screenshot inventory pages from appearing in the sidebar navigation without requiring `nav_exclude: true` frontmatter on every individual `images/lab-NN/README.md`:
+
+```yaml
+defaults:
+  - scope:
+      path: "images"
+    values:
+      nav_exclude: true
+```
+
+### Mermaid Initialization Pattern
+
+The workshop `_includes/head_custom.html` MUST use `startOnLoad: false` with an explicit `await mermaid.run()` call. Do NOT use `startOnLoad: true` — it causes race conditions where the code-block-to-div conversion happens after Mermaid's initial scan:
+
+```html
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false });
+  document.querySelectorAll('pre > code.language-mermaid').forEach(el => {
+    const div = document.createElement('div');
+    div.className = 'mermaid';
+    div.textContent = el.textContent;
+    el.parentElement.replaceWith(div);
+  });
+  await mermaid.run();
+</script>
+<style>
+  .mermaid { text-align: center; }
+</style>
+```
+
 ## Power BI PBIP Conventions
 
 ### Directory Structure
@@ -648,7 +752,7 @@ Workshop repositories MUST support Mermaid diagrams in lab markdown rendered via
 
 ### Requirements
 
-1. Include `_includes/head-custom.html` with Mermaid v11 ESM import.
+1. Include `_includes/head_custom.html` with Mermaid v11 ESM import.
 2. The script converts `language-mermaid` code blocks to `<div class="mermaid">` elements at runtime.
 3. Use the Mermaid support template from the scaffolding skill.
 4. Labs MAY use fenced code blocks with `mermaid` language identifier for architecture diagrams, flow charts, and sequence diagrams.

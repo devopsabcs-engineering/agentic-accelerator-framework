@@ -152,7 +152,7 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 ├── index.md                                     # Workshop home / GitHub Pages landing
 ├── Gemfile                                      # Jekyll dependencies
 ├── _includes/
-│   └── head-custom.html                         # Mermaid v11 ESM support
+│   └── head_custom.html                         # Mermaid v11 ESM support
 ├── .devcontainer/
 │   ├── devcontainer.json                        # Dev container with prerequisites
 │   └── post-create.sh                           # Install domain-specific tools
@@ -202,27 +202,30 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 
 ## Mermaid Support Template
 
-Workshop repos use Jekyll's `head-custom.html` include to enable Mermaid diagrams on GitHub Pages.
+Workshop repos use Jekyll's `head_custom.html` include to enable Mermaid diagrams on GitHub Pages.
 
-### `_includes/head-custom.html`
+### `_includes/head_custom.html`
+
+> **Critical**: Use `startOnLoad: false` with an explicit `await mermaid.run()`. Do NOT use `startOnLoad: true` — it causes a race condition where Mermaid scans the DOM before the code-block-to-div conversion completes.
 
 ```html
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({ startOnLoad: true });
+  mermaid.initialize({ startOnLoad: false });
   document.querySelectorAll('pre > code.language-mermaid').forEach(el => {
     const div = document.createElement('div');
     div.className = 'mermaid';
     div.textContent = el.textContent;
     el.parentElement.replaceWith(div);
   });
+  await mermaid.run();
 </script>
 <style>
   .mermaid { text-align: center; }
 </style>
 ```
 
-This script loads Mermaid v11 as an ES module and converts fenced code blocks with the `mermaid` language identifier into rendered diagrams.
+This script loads Mermaid v11 as an ES module, converts fenced code blocks with the `mermaid` language identifier into `<div class="mermaid">` elements, then explicitly triggers rendering with `mermaid.run()`.
 
 ## Bootstrap Script Templates
 
@@ -1102,6 +1105,75 @@ rg-{prefix}-demo-005
 ```
 
 This enables independent teardown and cost tracking per app.
+
+## Bidirectional Repository Linking
+
+Every scaffolded domain MUST establish bidirectional links across the framework, workshop, and scanner repos. This ensures that a user landing on any one repo can navigate to all related repos.
+
+### Framework README Templates
+
+When scaffolding a new domain, add rows to these two sections in `agentic-accelerator-framework/README.md`:
+
+**Workshops section** (links to GitHub Pages sites):
+
+```markdown
+| {Domain Display Name} | [{Domain Display Name} Scan Workshop](https://devopsabcs-engineering.github.io/{domain}-scan-workshop/) |
+```
+
+**Domain Repositories table** (links to both repos):
+
+```markdown
+| {Domain Display Name} | [{domain}-scan-demo-app](https://github.com/devopsabcs-engineering/{domain}-scan-demo-app) | [{domain}-scan-workshop](https://github.com/devopsabcs-engineering/{domain}-scan-workshop) |
+```
+
+### Workshop `index.md` Template
+
+Add a `> [!NOTE]` callout near the top and a "Related Repositories" table at the bottom of `{domain}-scan-workshop/index.md`:
+
+```markdown
+> [!NOTE]
+> This workshop is part of the [Agentic Accelerator Framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework).
+```
+
+```markdown
+## Related Repositories
+
+| Repository | Description |
+|------------|-------------|
+| [agentic-accelerator-framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework) | Framework agents, instructions, and skills |
+| [{domain}-scan-demo-app](https://github.com/devopsabcs-engineering/{domain}-scan-demo-app) | Scanner platform and demo applications |
+| [agentic-accelerator-workshop](https://github.com/devopsabcs-engineering/agentic-accelerator-workshop) | Main workshop (all domains) |
+```
+
+### Scanner README Template
+
+Add a "Related Repositories" section at the bottom of `{domain}-scan-demo-app/README.md`:
+
+```markdown
+## Related Repositories
+
+| Repository | Description |
+|------------|-------------|
+| [agentic-accelerator-framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework) | Framework agents, instructions, and skills |
+| [{domain}-scan-workshop](https://devopsabcs-engineering.github.io/{domain}-scan-workshop/) | Hands-on workshop (GitHub Pages) |
+| [agentic-accelerator-workshop](https://github.com/devopsabcs-engineering/agentic-accelerator-workshop) | Main workshop (all domains) |
+```
+
+### Workshop `_config.yml` Image Path Exclusion
+
+The workshop `_config.yml` MUST include a `defaults:` scope that sets `nav_exclude: true` for the `images` path. This prevents screenshot inventory pages from appearing in the sidebar without requiring frontmatter on every individual `images/lab-NN/README.md`:
+
+```yaml
+defaults:
+  - scope:
+      path: "images"
+    values:
+      nav_exclude: true
+```
+
+### Mermaid Initialization Pattern
+
+The workshop `_includes/head_custom.html` MUST use `startOnLoad: false` with an explicit `await mermaid.run()` call. Do NOT use `startOnLoad: true` — it causes race conditions where the code-block-to-div conversion happens after Mermaid's initial scan. See the updated Mermaid Support Template above.
 
 ## GitHub Pages / Jekyll Configuration
 

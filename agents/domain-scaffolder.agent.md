@@ -97,7 +97,7 @@ Generate the complete `{domain}-scan-workshop` repository structure following th
 5. Create `.devcontainer/` with `devcontainer.json` and `post-create.sh`.
 6. Create Jekyll site files (`_config.yml`, `index.md`, `Gemfile`) using the Just the Docs theme templates from the scaffolding skill. The `_config.yml` MUST use `remote_theme: just-the-docs/just-the-docs` with `heading_anchors: true` and appropriate `exclude` list. The `index.md` MUST have `layout: default`, `title: Home`, `nav_order: 0`, and `permalink: /`.
 7. Create `CONTRIBUTING.md` and `README.md`.
-8. Generate `_includes/head-custom.html` with Mermaid v11 ESM support using the Mermaid support template from the scaffolding skill.
+8. Generate `_includes/head_custom.html` with Mermaid v11 ESM support using the Mermaid support template from the scaffolding skill.
 9. Auto-generate screenshot `![image](../images/lab-NN/filename.png)` references in all lab markdown files, placing them after each step that produces visible output.
 10. Include a working directory callout block in labs that reference files from the demo-app repository. Use a blockquote format: `> **Working Directory**: Run the following commands from the `{domain}-scan-demo-app` repository root.`
 11. Generate lab YAML frontmatter with `permalink`, `title`, and `description` fields, plus a metadata table (Duration, Level, Prerequisites) immediately after the heading. Just the Docs generates sidebar navigation automatically from page `title` fields — no `parent`, `nav_order`, or `has_children` properties are needed for labs.
@@ -116,6 +116,49 @@ Configure repository-level settings that must be applied after content is pushed
 5. Set the **website URL** on the workshop repo to its GitHub Pages URL.
 6. Set **OIDC secrets** (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`) on the **scanner repo** — the `deploy-all.yml` runs there.
 7. Create the **`prod` environment** on the scanner repo (not `production` — match the federated credential subject).
+8. Add **bidirectional links** across all related repositories (see Bidirectional Repository Linking below).
+
+### Bidirectional Repository Linking
+
+Every scaffolded domain MUST establish cross-repository links so users can navigate between the framework, workshop, and scanner repos. Apply these conventions after content is pushed:
+
+1. **Framework README** (`agentic-accelerator-framework/README.md`) — add the new domain to the "Workshops" section (linking to GitHub Pages sites) and to the "Domain Repositories" table (linking to both `{domain}-scan-demo-app` and `{domain}-scan-workshop` repos).
+
+2. **Workshop `index.md`** (`{domain}-scan-workshop/index.md`) — include a `> [!NOTE]` callout near the top:
+   ```markdown
+   > [!NOTE]
+   > This workshop is part of the [Agentic Accelerator Framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework).
+   ```
+   Add a "Related Repositories" table at the bottom linking to the framework and the domain scanner repo.
+
+3. **Scanner README** (`{domain}-scan-demo-app/README.md`) — include a "Related Repositories" section at the bottom with a table linking to the framework repo and the domain workshop GitHub Pages site.
+
+4. **Workshop `_config.yml`** — include a `defaults:` scope that sets `nav_exclude: true` for the `images` path to prevent screenshot inventory pages from polluting sidebar navigation:
+   ```yaml
+   defaults:
+     - scope:
+         path: "images"
+       values:
+         nav_exclude: true
+   ```
+
+5. **Workshop `_includes/head_custom.html`** — the Mermaid initialization MUST use `startOnLoad: false` with `await mermaid.run()`, NOT `startOnLoad: true`:
+   ```html
+   <script type="module">
+     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+     mermaid.initialize({ startOnLoad: false });
+     document.querySelectorAll('pre > code.language-mermaid').forEach(el => {
+       const div = document.createElement('div');
+       div.className = 'mermaid';
+       div.textContent = el.textContent;
+       el.parentElement.replaceWith(div);
+     });
+     await mermaid.run();
+   </script>
+   <style>
+     .mermaid { text-align: center; }
+   </style>
+   ```
 
 ### Step 7: Produce Summary
 
