@@ -222,6 +222,13 @@ Workshop repos use Jekyll's `head_custom.html` include to enable Mermaid diagram
 </script>
 <style>
   .mermaid { text-align: center; }
+  /* Allow long site titles to wrap instead of being clipped */
+  @media (min-width: 50rem) {
+    .site-header {
+      height: auto;
+      max-height: none;
+    }
+  }
 </style>
 ```
 
