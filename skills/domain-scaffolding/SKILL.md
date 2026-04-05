@@ -201,7 +201,10 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 │   └── full-day.md                              # 7h delivery guide
 ├── assets/
 │   └── branding/
-│       └── logo-128.png                         # Framework logo for workshop header
+│       ├── logo-128.png                         # Framework logo for workshop header
+│       ├── favicon.ico                          # Browser tab icon
+│       ├── favicon-32x32.png                    # Web favicon
+│       └── apple-touch-icon.png                 # iOS bookmarks icon
 ├── CONTRIBUTING.md                              # Workshop contribution guide
 └── README.md
 ```
@@ -1341,7 +1344,7 @@ Every generated repository MUST include the framework logo in these locations:
 
 2. **GitHub social preview** — Set via `gh repo edit --social-preview assets/branding/social/social-preview-1280x640.png` or upload manually in repo Settings → General → Social preview. The social preview image is stored in the framework repo and should be copied to each generated repo.
 
-3. **Workshop `_includes/head-custom.html`** — Include favicon link alongside the Mermaid script:
+3. **Workshop `_includes/head_custom.html`** — Include favicon link alongside the Mermaid script:
 
    ```html
    <link rel="icon" type="image/x-icon" href="{{ site.baseurl }}/assets/branding/favicon.ico">

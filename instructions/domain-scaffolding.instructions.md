@@ -757,6 +757,49 @@ Workshop repositories MUST support Mermaid diagrams in lab markdown rendered via
 3. Use the Mermaid support template from the scaffolding skill.
 4. Labs MAY use fenced code blocks with `mermaid` language identifier for architecture diagrams, flow charts, and sequence diagrams.
 
+## Branding Conventions
+
+All scaffolded repositories MUST include framework branding for visual consistency across the ecosystem.
+
+### Branding Assets to Copy
+
+Copy from the framework repo `assets/branding/` to each generated repository's `assets/branding/`:
+
+| Asset | Source Path | Target Repos |
+|-------|-----------|--------------|
+| `logo-128.png` | `logo/logo-128.png` | Scanner + Workshop |
+| `favicon.ico` | `favicon/favicon.ico` | Workshop only |
+| `favicon-32x32.png` | `favicon/favicon-32x32.png` | Workshop only |
+| `apple-touch-icon.png` | `favicon/apple-touch-icon.png` | Workshop only |
+
+### README Logo Header
+
+Both scanner and workshop READMEs MUST include a centered logo at the top:
+
+```markdown
+<p align="center">
+  <img src="assets/branding/logo-128.png" alt="Agentic Accelerator Framework" width="100">
+</p>
+```
+
+### Workshop index.md Logo
+
+The workshop `index.md` landing page MUST include the same centered logo between the YAML frontmatter and the H1 heading.
+
+### Workshop Favicon Links
+
+The workshop `_includes/head_custom.html` MUST include favicon links before the Mermaid script:
+
+```html
+<link rel="icon" type="image/x-icon" href="{{ site.baseurl }}/assets/branding/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ site.baseurl }}/assets/branding/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="{{ site.baseurl }}/assets/branding/apple-touch-icon.png">
+```
+
+### Social Preview (Manual Step)
+
+Each generated repository SHOULD have its social preview set to `social-preview-1280x640.png` via Settings → General → Social preview. Document this as a manual next step in the scaffolding summary.
+
 ## Playwright Authentication State
 
 Workshop screenshot manifests reference `github-auth.json` and `ado-auth.json` for authenticated page captures (Phase 3 and Phase 4 screenshots). These auth state files MUST be bootstrapped before running the capture script.

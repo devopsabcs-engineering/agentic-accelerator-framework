@@ -97,8 +97,10 @@ Generate the complete `{domain}-scan-workshop` repository structure following th
 5. Create `.devcontainer/` with `devcontainer.json` and `post-create.sh`.
 6. Create Jekyll site files (`_config.yml`, `index.md`, `Gemfile`) using the Just the Docs theme templates from the scaffolding skill. The `_config.yml` MUST use `remote_theme: just-the-docs/just-the-docs` with `heading_anchors: true` and appropriate `exclude` list. The `index.md` MUST have `layout: default`, `title: Home`, `nav_order: 0`, and `permalink: /`.
 7. Create `CONTRIBUTING.md` and `README.md`.
-8. Generate `_includes/head_custom.html` with Mermaid v11 ESM support using the Mermaid support template from the scaffolding skill.
-9. Auto-generate screenshot `![image](../images/lab-NN/filename.png)` references in all lab markdown files, placing them after each step that produces visible output.
+8. Generate `_includes/head_custom.html` with Mermaid v11 ESM support AND favicon links using the Mermaid support template from the scaffolding skill. Include `<link>` tags for `favicon.ico`, `favicon-32x32.png`, and `apple-touch-icon.png` from `assets/branding/`.
+9. Copy branding assets (`logo-128.png`, `favicon.ico`, `favicon-32x32.png`, `apple-touch-icon.png`) from the framework `assets/branding/` directory to `assets/branding/` in both the scanner and workshop repos.
+10. Add a centered logo header (`logo-128.png`) at the top of the workshop `index.md` and the scanner `README.md` using the README Header Template from the scaffolding skill.
+11. Auto-generate screenshot `![image](../images/lab-NN/filename.png)` references in all lab markdown files, placing them after each step that produces visible output.
 10. Include a working directory callout block in labs that reference files from the demo-app repository. Use a blockquote format: `> **Working Directory**: Run the following commands from the `{domain}-scan-demo-app` repository root.`
 11. Generate lab YAML frontmatter with `permalink`, `title`, and `description` fields, plus a metadata table (Duration, Level, Prerequisites) immediately after the heading. Just the Docs generates sidebar navigation automatically from page `title` fields — no `parent`, `nav_order`, or `has_children` properties are needed for labs.
 12. Add `nav_exclude: true` frontmatter to ALL screenshot inventory pages (`images/lab-NN/README.md`) so they do not appear in the sidebar navigation. Only labs and the home page should appear in the sidebar.
