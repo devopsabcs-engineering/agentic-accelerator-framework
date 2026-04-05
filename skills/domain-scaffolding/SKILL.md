@@ -181,13 +181,13 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 │       └── README.md                            # Power BI PBIP, ADLS Gen2, OAuth
 ├── images/
 │   ├── lab-00/
-│   │   └── README.md                            # Screenshot inventory
+│   │   └── README.md                            # Screenshot inventory (nav_exclude: true)
 │   ├── lab-01/ ... lab-08/
-│   │   └── README.md
+│   │   └── README.md                            # Screenshot inventory (nav_exclude: true)
 │   ├── lab-06-ado/
-│   │   └── README.md
+│   │   └── README.md                            # Screenshot inventory (nav_exclude: true)
 │   └── lab-07-ado/
-│       └── README.md
+│       └── README.md                            # Screenshot inventory (nav_exclude: true)
 ├── scripts/
 │   ├── capture-screenshots.ps1                  # Domain-specific capture orchestrator
 │   ├── screenshot-manifest.json                 # Declarative screenshot definitions
@@ -991,7 +991,7 @@ Workshop labs reference specific files and features from the demo-app repo. The 
 
 ## Lab Markdown Template
 
-Every generated lab README MUST follow this template structure:
+Every generated lab README MUST follow this template structure. The `title` field in frontmatter drives sidebar navigation in Just the Docs — no `parent`, `nav_order`, or `has_children` properties are needed. All code blocks MUST use a language identifier (`powershell`, `json`, `yaml`, `text`, etc.) to enable the Just the Docs copy-to-clipboard button.
 
 ````markdown
 ---
@@ -1116,22 +1116,71 @@ remote_theme: just-the-docs/just-the-docs
 baseurl: "/{domain}-scan-workshop"
 url: "https://devopsabcs-engineering.github.io"
 
-nav_order: 1
-search_enabled: true
+nav_order_base: 0
+heading_anchors: true
+
+exclude:
+  - scripts/
+  - delivery/
+  - .devcontainer/
+  - node_modules/
+  - package.json
+  - package-lock.json
+  - Gemfile.lock
 ```
 
 > **Critical**: Use `remote_theme: just-the-docs/just-the-docs` (NOT `theme: just-the-docs`). The `theme` key only works for locally installed gems, not GitHub Pages.
 
 > **Critical**: Set `baseurl: "/{repo-name}"` for project sites. An empty `baseurl` causes 404s on asset loading.
 
+> **Navigation**: Just the Docs auto-generates sidebar navigation from every Markdown page with a `title` in frontmatter. Labs sort alphabetically by title (which works naturally since titles start with `Lab 00:`, `Lab 01:`, etc.). Pages with `nav_exclude: true` are hidden from the sidebar.
+
 ### Gemfile Template
 
 ```ruby
 source "https://rubygems.org"
 gem "github-pages", group: :jekyll_plugins
+gem "webrick", "~> 1.8"
 ```
 
 > Do NOT use `gem "jekyll"` or `gem "just-the-docs"` directly. The `github-pages` gem bundles all compatible dependencies for GitHub Pages deployment.
+
+### index.md Template
+
+The workshop landing page (`index.md`) MUST use this frontmatter:
+
+```yaml
+---
+layout: default
+title: Home
+nav_order: 0
+permalink: /
+---
+```
+
+The `nav_order: 0` ensures Home appears first in the Just the Docs sidebar. The body should include the workshop title, architecture overview (Mermaid diagram), prerequisites summary, labs table with links, workshop schedule, and getting started instructions. See the code-quality-scan-workshop `index.md` for the reference structure.
+
+### Screenshot Inventory Template
+
+Each `images/lab-{NN}/README.md` MUST include `nav_exclude: true` in frontmatter to prevent it from appearing in the sidebar navigation:
+
+```yaml
+---
+nav_exclude: true
+---
+```
+
+The body contains a Markdown table listing all screenshots for the lab:
+
+```markdown
+# Lab {NN} Screenshots
+
+| File | Description |
+|------|-------------|
+| `lab-{NN}-description.png` | Description of what the screenshot shows |
+```
+
+These pages are for developer tracking only and are NOT relevant to workshop participants. They MUST NOT appear in sidebar navigation.
 
 ## DevContainer Template Updates
 

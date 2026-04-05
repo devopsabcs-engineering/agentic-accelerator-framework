@@ -365,14 +365,30 @@ The `deploy-all.yml` workflow runs on the scanner repo (`{domain}-scan-demo-app`
 
 ## GitHub Pages Configuration (Workshop)
 
+Workshop repos use the **Just the Docs** Jekyll theme for professional sidebar navigation, search, and copy-to-clipboard code blocks.
+
 ### Jekyll Config
 
 Workshop `_config.yml` MUST use these settings for project sites:
 
 ```yaml
+title: "{Domain Display Name} Scan Workshop"
+description: "Hands-on workshop description"
 remote_theme: just-the-docs/just-the-docs
 baseurl: "/{repo-name}"    # MUST be /{repo-name} for project sites, NOT empty string
 url: "https://{org}.github.io"
+
+nav_order_base: 0
+heading_anchors: true
+
+exclude:
+  - scripts/
+  - delivery/
+  - .devcontainer/
+  - node_modules/
+  - package.json
+  - package-lock.json
+  - Gemfile.lock
 ```
 
 Do NOT use `theme: just-the-docs` — it only works locally. Use `remote_theme` for GitHub Pages compatibility.
@@ -384,9 +400,29 @@ Workshop `Gemfile` MUST use the `github-pages` gem:
 ```ruby
 source "https://rubygems.org"
 gem "github-pages", group: :jekyll_plugins
+gem "webrick", "~> 1.8"
 ```
 
 Do NOT use `gem "jekyll"` or `gem "just-the-docs"` directly — they may not be compatible with GitHub Pages.
+
+### Sidebar Navigation
+
+Just the Docs auto-generates sidebar navigation from all Markdown pages with a `title` in frontmatter. Navigation behavior:
+
+1. **Labs appear automatically** — every lab README with a `title` in frontmatter appears in the sidebar, sorted alphabetically by title.
+2. **No `parent`/`nav_order`/`has_children` needed** — the flat lab structure works naturally with alphabetical sorting since lab titles start with `Lab 00:`, `Lab 01:`, etc.
+3. **Screenshot inventory pages MUST be excluded** — add `nav_exclude: true` to `images/lab-NN/README.md` frontmatter to prevent screenshot inventory pages from appearing in the sidebar. These are not relevant for workshop participants.
+4. **Home page** — `index.md` MUST have `nav_order: 0` to appear first in the sidebar.
+5. The `exclude` list in `_config.yml` prevents `scripts/`, `delivery/`, and other non-content directories from being processed by Jekyll.
+
+### Code Block Copy Buttons
+
+Just the Docs automatically adds a copy-to-clipboard button on every fenced code block that has a language tag. To ensure all commands are easily copyable:
+
+1. Always use a language identifier on fenced code blocks: `powershell`, `json`, `yaml`, `text`, `html`, `bash`, etc.
+2. Never use bare triple-backtick fences without a language tag.
+3. Place each copyable command in its own code block — do not mix commands with output in the same block.
+4. Use `powershell` as the language tag for all CLI commands (not `bash` or `shell`).
 
 ## Repository Metadata
 
@@ -476,7 +512,7 @@ ADO variants use the `-ado` suffix in directory names:
 
 Each lab README MUST include:
 
-1. **YAML frontmatter** — Add before the heading:
+1. **YAML frontmatter** — Add before the heading. The `title` field drives sidebar navigation in Just the Docs (no `parent` or `nav_order` needed — labs sort alphabetically by title):
 
    ```yaml
    ---
@@ -581,6 +617,14 @@ Follow the pattern `lab-{NN}-{description}.png`:
 ### Screenshot Inventory
 
 Each `images/lab-{NN}/` directory MUST contain a `README.md` listing all screenshots with descriptions, used for tracking completeness.
+
+Screenshot inventory READMEs MUST include `nav_exclude: true` in YAML frontmatter to prevent them from appearing in the Just the Docs sidebar navigation:
+
+```yaml
+---
+nav_exclude: true
+---
+```
 
 ### PowerShell Mandate
 

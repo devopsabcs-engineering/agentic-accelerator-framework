@@ -95,13 +95,15 @@ Generate the complete `{domain}-scan-workshop` repository structure following th
 3. Create `scripts/` with `capture-screenshots.ps1`, `screenshot-manifest.json`, `screenshot-helpers.psm1`, and `playwright-helpers.js`.
 4. Create `delivery/` with half-day and full-day delivery guides.
 5. Create `.devcontainer/` with `devcontainer.json` and `post-create.sh`.
-6. Create Jekyll site files (`_config.yml`, `index.md`, `Gemfile`).
+6. Create Jekyll site files (`_config.yml`, `index.md`, `Gemfile`) using the Just the Docs theme templates from the scaffolding skill. The `_config.yml` MUST use `remote_theme: just-the-docs/just-the-docs` with `heading_anchors: true` and appropriate `exclude` list. The `index.md` MUST have `layout: default`, `title: Home`, `nav_order: 0`, and `permalink: /`.
 7. Create `CONTRIBUTING.md` and `README.md`.
 8. Generate `_includes/head-custom.html` with Mermaid v11 ESM support using the Mermaid support template from the scaffolding skill.
 9. Auto-generate screenshot `![image](../images/lab-NN/filename.png)` references in all lab markdown files, placing them after each step that produces visible output.
 10. Include a working directory callout block in labs that reference files from the demo-app repository. Use a blockquote format: `> **Working Directory**: Run the following commands from the `{domain}-scan-demo-app` repository root.`
-11. Generate lab YAML frontmatter with `permalink`, `title`, and `description` fields, plus a metadata table (Duration, Level, Prerequisites) immediately after the heading.
-12. Update `.devcontainer/post-create.sh` to auto-fork or clone the scanner demo-app repo as a sibling directory for workshop participants.
+11. Generate lab YAML frontmatter with `permalink`, `title`, and `description` fields, plus a metadata table (Duration, Level, Prerequisites) immediately after the heading. Just the Docs generates sidebar navigation automatically from page `title` fields — no `parent`, `nav_order`, or `has_children` properties are needed for labs.
+12. Add `nav_exclude: true` frontmatter to ALL screenshot inventory pages (`images/lab-NN/README.md`) so they do not appear in the sidebar navigation. Only labs and the home page should appear in the sidebar.
+13. Update `.devcontainer/post-create.sh` to auto-fork or clone the scanner demo-app repo as a sibling directory for workshop participants.
+14. All code blocks in lab markdown MUST use a language identifier (`powershell`, `json`, `yaml`, `text`, etc.) to enable the Just the Docs copy-to-clipboard button on each code block. Never use bare fenced code blocks without a language tag.
 
 ### Step 6: Configure Repository Settings
 
