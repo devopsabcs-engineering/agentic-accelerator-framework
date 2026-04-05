@@ -152,7 +152,18 @@ samples/
 
 * [Agentic Accelerator Workshop](https://devopsabcs-engineering.github.io/agentic-accelerator-workshop/) — Hands-on workshop for building and deploying custom GitHub Copilot agents with the Agentic Accelerator Framework
 * [Accessibility Scan Workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) — Workshop for WCAG 2.2 Level AA accessibility scanning and remediation using custom agents
+* [Code Quality Scan Workshop](https://devopsabcs-engineering.github.io/code-quality-scan-workshop/) — Workshop for code quality scanning with ESLint, Ruff, jscpd, Lizard, and coverage tools
 * [FinOps Scan Workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) — Workshop for Azure cost optimization and FinOps governance using custom agents
+
+## Domain Repositories
+
+Each domain has a scanner platform repo (demo-app) and a workshop template repo:
+
+| Domain | Scanner Platform | Workshop |
+|--------|-----------------|----------|
+| **Accessibility** | [accessibility-scan-demo-app](https://github.com/devopsabcs-engineering/accessibility-scan-demo-app) | [accessibility-scan-workshop](https://github.com/devopsabcs-engineering/accessibility-scan-workshop) |
+| **Code Quality** | [code-quality-scan-demo-app](https://github.com/devopsabcs-engineering/code-quality-scan-demo-app) | [code-quality-scan-workshop](https://github.com/devopsabcs-engineering/code-quality-scan-workshop) |
+| **FinOps** | [finops-scan-demo-app](https://github.com/devopsabcs-engineering/finops-scan-demo-app) | [finops-scan-workshop](https://github.com/devopsabcs-engineering/finops-scan-workshop) |
 
 ## DIY: Build a New Domain
 
