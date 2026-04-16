@@ -1,6 +1,6 @@
 # Domain Parity and Contribution Guide
 
-This document compares the feature parity across the Accessibility and FinOps domains and provides a step-by-step guide for contributing a new domain to the Agentic Accelerator Framework.
+This document compares the feature parity across the Accessibility, Code Quality, and FinOps domains and provides a step-by-step guide for contributing a new domain to the Agentic Accelerator Framework.
 
 ## Two-Repo Pattern
 
@@ -57,47 +57,47 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 
 ### Demo App Repos
 
-| Feature | Accessibility (`accessibility-scan-demo-app`) | FinOps (`finops-scan-demo-app`) |
-|---------|-----------------------------------------------|----------------------------------|
-| **Sample apps** | 5 web apps (Rust, C#, Java, Python, Go) with 15+ WCAG violations each | 5 IaC apps (Bicep + HTML) with cost governance violations |
-| **Centralized scanner** | Full-stack Next.js 15 app (Web UI, REST API, CLI, GitHub Action) | Central `finops-scan.yml` workflow with matrix strategy |
-| **Scanner deployment** | Azure App Service (Docker container) | GitHub Actions only (no deployed scanner app) |
-| **Open source tools** | axe-core 4.11, IBM Equal Access 4.0 | PSRule for Azure, Checkov, Cloud Custodian, Infracost |
-| **Custom tools** | 5 custom Playwright checks, CLI, SARIF generator, scoring engine, PDF/HTML reports | 2 Python SARIF converters, 4 Cloud Custodian policies |
-| **SARIF generation** | Native (built-in SARIF v2.1.0 generator) | Mixed: PSRule and Checkov native; Cloud Custodian and Infracost via 2 Python converters |
-| **SARIF upload** | `codeql-action/upload-sarif@v4` (same-repo) | Cross-repo upload via GitHub REST API (`gh api`) |
-| **Copilot agents** | 2 (a11y-detector, a11y-resolver) | 5 (CostAnalysis, FinOpsGovernance, CostAnomalyDetector, CostOptimizer, DeploymentCostGate) |
-| **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (finops-scan, finops-fix) |
-| **Copilot instructions** | 3 (wcag22-rules, a11y-remediation, ado-workflow) | 2 (finops-governance, ado-workflow) |
-| **Copilot skills** | 0 | 1 (finops-scan) |
-| **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) |
-| **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) |
-| **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
-| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI |
-| **Power BI PBIP** | `a11y-pbi-report/A11yReport.pbip` (1 page, 7 dimensions) | `power-bi/FinOpsReport.pbip` (1 page, 5 dimensions) |
-| **GitHub Actions** | 5 workflows (ci, deploy, a11y-scan, deploy-all, scan-all) | 4 workflows (finops-scan, finops-cost-gate, deploy-all, teardown-all) |
-| **Azure DevOps pipelines** | 10 pipelines + 5 templates (ci, ci-cd, deploy, deploy-all, a11y-scan, a11y-scan-advancedsecurity, adv-sec-scan, scan-all, scan-and-store + 5 templates) | 5 pipelines + 2 templates (finops-scan, finops-cost-gate, deploy-all, teardown-all, scan-and-store + 2 templates) |
-| **Power BI docs** | PBIP implemented (`a11y-pbi-report/A11yReport.pbip`) + deployment scripts | 5 docs (data model, dashboard design, Power Query M, Resource Graph, FinOps Toolkit) |
-| **Primary language** | TypeScript 81.8% | PowerShell 59.8%, Bicep 16.4%, Python 13.6%, HCL 5.8%, HTML 4.1% |
+| Feature | Accessibility (`accessibility-scan-demo-app`) | Code Quality (`code-quality-scan-demo-app`) | FinOps (`finops-scan-demo-app`) |
+|---------|-----------------------------------------------|----------------------------------------------|----------------------------------|
+| **Sample apps** | 5 web apps (Rust, C#, Java, Python, Go) with 15+ WCAG violations each | 1 Next.js sample app (`sample-app/`) with coverage gaps, complexity violations, and linting issues | 5 IaC apps (Bicep + HTML) with cost governance violations |
+| **Centralized scanner** | Full-stack Next.js 15 app (Web UI, REST API, CLI, GitHub Action) | MegaLinter multi-language orchestrator with 4-tool architecture | Central `finops-scan.yml` workflow with matrix strategy |
+| **Scanner deployment** | Azure App Service (Docker container) | GitHub Actions CI workflow (no deployed scanner app) | GitHub Actions only (no deployed scanner app) |
+| **Open source tools** | axe-core 4.11, IBM Equal Access 4.0 | MegaLinter (ESLint, Pylint, Checkstyle), Jest, pytest-cov, JaCoCo | PSRule for Azure, Checkov, Cloud Custodian, Infracost |
+| **Custom tools** | 5 custom Playwright checks, CLI, SARIF generator, scoring engine, PDF/HTML reports | Inline JS SARIF converter in CI workflow | 2 Python SARIF converters, 4 Cloud Custodian policies |
+| **SARIF generation** | Native (built-in SARIF v2.1.0 generator) | Mixed: ESLint native (`@microsoft/eslint-formatter-sarif`); others via inline JS converter | Mixed: PSRule and Checkov native; Cloud Custodian and Infracost via 2 Python converters |
+| **SARIF upload** | `codeql-action/upload-sarif@v4` (same-repo) | `codeql-action/upload-sarif@v4` (same-repo) | Cross-repo upload via GitHub REST API (`gh api`) |
+| **Copilot agents** | 2 (a11y-detector, a11y-resolver) | 2 (CodeQualityDetector, TestGenerator) | 5 (CostAnalysis, FinOpsGovernance, CostAnomalyDetector, CostOptimizer, DeploymentCostGate) |
+| **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (code-quality-scan, code-quality-fix) | 2 (finops-scan, finops-fix) |
+| **Copilot instructions** | 3 (wcag22-rules, a11y-remediation, ado-workflow) | 2 (code-quality, ado-workflow) | 2 (finops-governance, ado-workflow) |
+| **Copilot skills** | 0 | 1 (code-quality-scan) | 1 (finops-scan) |
+| **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | Not yet implemented (framework-level only) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) |
+| **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | Not yet implemented | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) |
+| **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | Not yet implemented | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
+| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | Not yet implemented | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI |
+| **Power BI PBIP** | `a11y-pbi-report/A11yReport.pbip` (1 page, 7 dimensions) | `power-bi/CodeQualityReport.pbip` (4 pages planned) | `power-bi/FinOpsReport.pbip` (1 page, 5 dimensions) |
+| **GitHub Actions** | 5 workflows (ci, deploy, a11y-scan, deploy-all, scan-all) | 1 CI workflow (`code-quality.yml`) + 1 sample (`code-quality-scan.yml`) | 4 workflows (finops-scan, finops-cost-gate, deploy-all, teardown-all) |
+| **Azure DevOps pipelines** | 10 pipelines + 5 templates (ci, ci-cd, deploy, deploy-all, a11y-scan, a11y-scan-advancedsecurity, adv-sec-scan, scan-all, scan-and-store + 5 templates) | 1 sample pipeline (`quality-pipeline.yml`) | 5 pipelines + 2 templates (finops-scan, finops-cost-gate, deploy-all, teardown-all, scan-and-store + 2 templates) |
+| **Power BI docs** | PBIP implemented (`a11y-pbi-report/A11yReport.pbip`) + deployment scripts | DIY guide (`DIY-Code-Quality-Domain.md`) | 5 docs (data model, dashboard design, Power Query M, Resource Graph, FinOps Toolkit) |
+| **Primary language** | TypeScript 81.8% | TypeScript (Next.js sample app) | PowerShell 59.8%, Bicep 16.4%, Python 13.6%, HCL 5.8%, HTML 4.1% |
 
 ### Workshop Repos
 
-| Feature | Accessibility (`accessibility-scan-workshop`) | FinOps (`finops-scan-workshop`) |
-|---------|------------------------------------------------|----------------------------------|
-| **Labs** | 8 labs (Lab 00–07) | 8 labs (Lab 00–07) |
-| **Platform-specific labs** | GitHub only (Lab 06, Lab 07) | GitHub only (Lab 06, Lab 07) |
-| **Full-day duration** | ~6.5 hours | ~7.25 hours |
-| **Half-day duration** | ~3 hours (Labs 00, 01, 02, 03, 05) | ~3.5 hours (Labs 00, 01, 02, 03, 06) |
-| **Delivery tiers** | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) |
-| **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | No |
-| **Copilot artifacts** | Workshop agent + governance instructions | None |
-| **Screenshot script** | `capture-screenshots.ps1` (~900+ lines, 47 PNGs, 3 phases) | `capture-screenshots.ps1` (~710+ lines, 46 PNGs) |
-| **Playwright helpers** | `playwright-helpers.js` (screenshot, scan, auth-screenshot) | Not present |
-| **Dev container** | Yes (Node.js 20 + Charm freeze) | Yes |
-| **GitHub Pages** | Yes (Jekyll) | Yes (Jekyll) |
-| **Template repo** | Yes | Yes |
-| **Contributing guide** | Yes (lab authoring style guide) | Yes (lab authoring style guide) |
-| **License** | MIT | MIT |
+| Feature | Accessibility (`accessibility-scan-workshop`) | Code Quality (`code-quality-scan-workshop`) | FinOps (`finops-scan-workshop`) |
+|---------|------------------------------------------------|----------------------------------------------|----------------------------------|
+| **Labs** | 8 labs (Lab 00–07) | 8 labs (Lab 00–07) | 8 labs (Lab 00–07) |
+| **Platform-specific labs** | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) |
+| **Full-day duration** | ~6.5 hours | ~6.5 hours | ~7.25 hours |
+| **Half-day duration** | ~3 hours (Labs 00, 01, 02, 03, 05) | ~3 hours (Labs 00, 01, 02, 03, 06) | ~3.5 hours (Labs 00, 01, 02, 03, 06) |
+| **Delivery tiers** | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) |
+| **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | Not yet implemented | No |
+| **Copilot artifacts** | Workshop agent + governance instructions | Not yet implemented | None |
+| **Screenshot script** | `capture-screenshots.ps1` (~900+ lines, 47 PNGs, 3 phases) | `capture-screenshots.ps1` | `capture-screenshots.ps1` (~710+ lines, 46 PNGs) |
+| **Playwright helpers** | `playwright-helpers.js` (screenshot, scan, auth-screenshot) | Not present | Not present |
+| **Dev container** | Yes (Node.js 20 + Charm freeze) | Yes | Yes |
+| **GitHub Pages** | Yes (Jekyll) | Yes (Jekyll) | Yes (Jekyll) |
+| **Template repo** | Yes | Yes | Yes |
+| **Contributing guide** | Yes (lab authoring style guide) | Yes (lab authoring style guide) | Yes (lab authoring style guide) |
+| **License** | MIT | MIT | MIT |
 
 The Accessibility workshop includes a workshop-specific Copilot agent that provides guided assistance during lab exercises, along with governance instructions that enforce coding standards within the workshop codebase. The FinOps workshop does not have equivalent Copilot artifacts. Adding a workshop agent and governance instructions to the FinOps workshop would bring AI-assisted lab guidance to parity. See [Gaps Identified](#gaps-identified) for remediation details.
 
@@ -125,11 +125,22 @@ New domains should follow this pattern and create a `capture-screenshots.ps1` sc
 | **Security pages** | 3 pages (Overview, Alerts by Type, Trend Analysis) — centralized repo returns HTTP 404, status unverifiable | Status unknown |
 | **Accessibility pages** | Per-domain PBIP: `A11yReport.pbip` (1 page: accessibility_compliance) | Need 4 additional pages per spec (5 total) |
 | **FinOps pages** | Per-domain PBIP: `FinOpsReport.pbip` (1 page: finops_compliance) | Need 5 additional pages per spec (6 total) |
-| **Code Quality pages** | None | Need coverage trends, complexity metrics, test generation tracking |
+| **Code Quality pages** | Per-domain PBIP: `CodeQualityReport.pbip` (4 pages planned: Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking) | Need implementation of planned pages |
 | **Data source** | Accessibility: Azure Blob Storage (`a11yscan7yt3mwgxp3wiy`); FinOps: Azure Blob Storage (`finopsscanstore2497`) | Per-domain Blob Storage replaces centralized ADO REST API |
-| **Format** | PBIP per domain (code-based, Git-friendly) | Transition from centralized to per-domain is complete for A11y and FinOps |
+| **Format** | PBIP per domain (code-based, Git-friendly) | Transition from centralized to per-domain is complete for A11y, Code Quality, and FinOps |
 
-The transition from a single centralized report to per-domain PBIPs is underway. The centralized `advsec-pbi-report-ado` repository returns HTTP 404 and may no longer be available. Both Accessibility and FinOps domains now own their PBIPs in their respective demo-app repositories, sourcing data from Azure Blob Storage rather than the originally specified ADLS Gen 2 + OAuth2.
+The transition from a single centralized report to per-domain PBIPs is underway. The centralized `advsec-pbi-report-ado` repository returns HTTP 404 and may no longer be available. All three domains (Accessibility, Code Quality, and FinOps) now own their PBIPs in their respective demo-app repositories, sourcing data from Azure Blob Storage rather than the originally specified ADLS Gen 2 + OAuth2.
+
+#### Three-Tier Dashboard Architecture
+
+The Power BI reporting strategy follows a three-tier architecture:
+
+1. **Centralized AdvSec Report** (`advsec-pbi-report-ado`) — Security-focused dashboard powered by the ADO Advanced Security REST API, with 3 pages (Security Overview, Alerts by Type, Trend Analysis) and a star schema built on `Fact_SecurityAlerts` + 5 dimension tables.
+2. **Per-domain PBIPs** — Each domain owns its PBIP in its demo-app repository:
+   * Accessibility: `a11y-pbi-report/A11yReport.pbip` (star schema, Azure Blob Storage)
+   * Code Quality: `power-bi/CodeQualityReport.pbip` (4 pages planned)
+   * FinOps: `power-bi/FinOpsReport.pbip` (star schema, Azure Blob Storage)
+3. **Holistic view** — The centralized AdvSec report provides the Advanced Security findings view, while the 3 domain dashboards (Accessibility, Code Quality, FinOps) provide domain-specific deep dives. Together they offer a holistic view across all scanning domains.
 
 | Aspect | Current (Centralized) | Target (Per-Domain PBIP) | Realized State |
 |--------|----------------------|-------------------------|----------------|
@@ -147,9 +158,9 @@ Making Azure DevOps a first-class citizen means every GitHub Actions workflow ha
 | Domain | GH Actions | ADO Pipelines | ADO Workshop Labs | GH Workshop Labs | PBIP | SARIF → Storage |
 |--------|-----------|---------------|-------------------|------------------|------|----------------|
 | **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | No | Yes | Partial (3 pages) — repo returns 404, status unknown | No |
-| **Accessibility** | `accessibility-scan.yml` (5 workflows) | 10 pipelines + 5 templates | No | Yes | Yes (`A11yReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
-| **Code Quality** | `code-quality.yml` | `quality-pipeline.yml` (sample) | No | Yes | No | No |
-| **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | 5 pipelines + 2 templates | No | Yes | Yes (`FinOpsReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
+| **Accessibility** | `accessibility-scan.yml` (5 workflows) | 10 pipelines + 5 templates | Yes | Yes | Yes (`A11yReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
+| **Code Quality** | `code-quality.yml` | `quality-pipeline.yml` (realized) | Yes | Yes | Yes (`CodeQualityReport.pbip`, 4 pages planned) | No |
+| **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | 5 pipelines + 2 templates | Yes | Yes | Yes (`FinOpsReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
 | **APM Security** | `apm-security.yml` | Inline pattern in docs | No | No | No | No |
 
 ## Desired Features to Compare
@@ -213,9 +224,9 @@ Labs 00 through 05 represent roughly 80% of workshop content and are fully platf
 | Domain | GH Workflows | ADO Pipelines (demo-app) | ADO Pipeline (framework sample) | GH Workshop Labs | ADO Workshop Labs | GH SARIF Upload | ADO SARIF Upload | PBIP |
 |--------|--------------|--------------------------|--------------------------------|------------------|-------------------|-----------------|------------------|------|
 | Security | Yes | N/A | Yes | Yes | No | Yes | Yes | Partial (3 pages) — repo returns 404, status unknown |
-| Accessibility | Yes (5) | Yes (10 + 5 templates) | Yes | Yes | No | Yes | Yes | Yes (1 page) |
-| Code Quality | Yes | No | Yes (sample) | Yes | No | Yes | No | No |
-| FinOps | Yes (2) | Yes (5 + 2 templates) | No | Yes | No | Yes | No | Yes (1 page) |
+| Accessibility | Yes (5) | Yes (10 + 5 templates) | Yes | Yes | Yes | Yes | Yes | Yes (1 page) |
+| Code Quality | Yes | No | Yes | Yes | Yes | Yes | No | Yes (`CodeQualityReport.pbip`, 4 pages planned) |
+| FinOps | Yes (2) | Yes (5 + 2 templates) | No | Yes | Yes | Yes | No | Yes (1 page) |
 
 #### Target State Mapping
 
@@ -301,7 +312,7 @@ Target Data Flow:
     → Power Query M parses SARIF JSON → star schema
     → Domain-specific report pages
 
-Realized Data Flow (Accessibility and FinOps):
+Realized Data Flow (Accessibility, Code Quality, and FinOps):
   CI/CD Pipelines (GH Actions / ADO YAML)
     → Scan tools produce results (SARIF, JSON, or tool-native output)
     → scan-and-store.ps1 transforms results to fact table JSON
@@ -473,7 +484,7 @@ To close this gap, create a FinOps workshop agent in `.github/agents/` and add g
 
 ### Gap 3: Domain-Specific Power BI Pages Below Spec — PARTIALLY CLOSED
 
-**Status: PARTIALLY CLOSED** — Both domains now have per-domain PBIPs (Accessibility: `A11yReport.pbip` with 1 page, FinOps: `FinOpsReport.pbip` with 1 page). However, the spec calls for 5 pages (Accessibility) and 6 pages (FinOps).
+**Status: PARTIALLY CLOSED** — All three domains now have per-domain PBIPs (Accessibility: `A11yReport.pbip` with 1 page, Code Quality: `CodeQualityReport.pbip` with 4 pages planned, FinOps: `FinOpsReport.pbip` with 1 page). However, the spec calls for 5 pages (Accessibility), 4 pages (Code Quality), and 6 pages (FinOps).
 
 To fully close this gap, add the remaining report pages to each domain's PBIP as specified in the domain-specific report pages table in [Desired Features to Compare](#desired-features-to-compare).
 
@@ -485,17 +496,16 @@ The Accessibility scanner generates SARIF v2.1.0 natively through a built-in Typ
 
 This is a design difference driven by tool capabilities rather than a gap requiring remediation. New domains should evaluate SARIF capabilities during tool selection (Step 2 of the contribution guide) and document any converters needed.
 
-### Gap 5: No ADO Workshop Labs
+### ~~Gap 5: No ADO Workshop Labs~~ — CLOSED
 
-All workshop labs for Lab 06 (SARIF output and Security Tab) and Lab 07 (GitHub Actions pipelines) are GitHub-only. No ADO-specific lab variants exist for any domain.
-
-To close this gap, create ADO-specific lab files (`lab-06-ado-sarif-advsec.md` and `lab-07-ado-pipelines.md`) in each domain's workshop repository. Follow the dual-platform architecture described in [Desired Features to Compare](#desired-features-to-compare). Labs 00–05 remain platform-agnostic and require no changes.
+**Status: CLOSED** — All 4 workshops (Agentic Accelerator, Accessibility, Code Quality, and FinOps) now include ADO-specific lab variants (`lab-06-ado-sarif-advsec.md` and `lab-07-ado-pipelines.md`). Every workshop supports 5 delivery tiers: half-day GitHub, half-day ADO, full-day GitHub, full-day ADO, and full-day dual-platform. Labs 00–05 remain platform-agnostic.
 
 ### ~~Gap 6: No Domain-Specific Power BI PBIPs~~ — CLOSED
 
-**Status: CLOSED** — Both Accessibility and FinOps domains now have per-domain PBIPs:
+**Status: CLOSED** — All three domains (Accessibility, Code Quality, and FinOps) now have per-domain PBIPs:
 
 * Accessibility: `a11y-pbi-report/A11yReport.pbip` with full TMDL semantic model (`Fact_A11yViolations` + 7 dimensions)
+* Code Quality: `power-bi/CodeQualityReport.pbip` with 4 planned report pages (Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking)
 * FinOps: `power-bi/FinOpsReport.pbip` with full TMDL semantic model (`Fact_FinOpsFindings` + 5 dimensions)
 
 Both PBIPs source data from Azure Blob Storage (not ADLS Gen 2 as originally specified). The scan-and-store pipeline pattern feeds data into these PBIPs on a weekly schedule.
@@ -680,7 +690,7 @@ gh api -X POST \
 
 #### `bootstrap-demo-apps.ps1`
 
-Follow the pattern from Accessibility and FinOps domains:
+Follow the pattern from Accessibility, Code Quality, and FinOps domains:
 
 1. Create 5 demo app repos from template directories
 2. Enable code scanning on each repo
@@ -698,7 +708,7 @@ Follow the pattern from Accessibility and FinOps domains:
 
 ### Step 8: Create the Workshop Repository
 
-Create `code-quality-scan-workshop` as a GitHub template repository:
+The `code-quality-scan-workshop` GitHub template repository is fully implemented with bilingual (GitHub + ADO) lab support:
 
 ```text
 code-quality-scan-workshop/
@@ -736,7 +746,7 @@ Workshop delivery tiers:
 | Full-day (ADO) | ADO | 00–05, 06-ado, 07-ado | ~7 hours | Yes |
 | Full-day (Dual) | Both | 00–05, 06-github, 06-ado, 07-github, 07-ado | ~8.5 hours | Yes |
 
-Screenshot scripts should support both platforms via a `--platform github|ado` parameter for platform-specific labs.
+Screenshot scripts support both platforms via a `--platform github|ado` parameter for platform-specific labs.
 
 ### Step 9: Create Domain-Specific Power BI PBIP
 

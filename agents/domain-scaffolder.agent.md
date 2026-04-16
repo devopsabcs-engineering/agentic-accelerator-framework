@@ -1,6 +1,6 @@
 ---
 name: DomainScaffolder
-description: "Scaffolds new domain scanner demo-app and workshop repositories with full parity to existing Accessibility and FinOps domains. Generates repo structures, bootstrap scripts, CI/CD pipelines, Power BI PBIP, and screenshot automation."
+description: "Scaffolds new domain scanner demo-app and workshop repositories with full parity to existing Accessibility, Code Quality, and FinOps domains. Generates repo structures, bootstrap scripts, CI/CD pipelines, Power BI PBIP, and screenshot automation."
 tools:
   # Read tools
   - read/readFile
@@ -106,6 +106,9 @@ Generate the complete `{domain}-scan-workshop` repository structure following th
 12. Add `nav_exclude: true` frontmatter to ALL screenshot inventory pages (`images/lab-NN/README.md`) so they do not appear in the sidebar navigation. Only labs and the home page should appear in the sidebar.
 13. Update `.devcontainer/post-create.sh` to auto-fork or clone the scanner demo-app repo as a sibling directory for workshop participants.
 14. All code blocks in lab markdown MUST use a language identifier (`powershell`, `json`, `yaml`, `text`, etc.) to enable the Just the Docs copy-to-clipboard button on each code block. Never use bare fenced code blocks without a language tag.
+15. Create `.github/agents/{domain}-workshop.agent.md` — a Copilot agent definition for the workshop repository, following the naming pattern in the scaffolding skill.
+16. Create `.github/instructions/{domain}-workshop.instructions.md` — Copilot instructions specific to the workshop repository, covering lab conventions and domain context.
+17. Create `.github/copilot-instructions.md` — repo-wide Copilot instructions for the workshop repository, referencing the domain agent and instructions files.
 
 ### Step 6: Configure Repository Settings
 

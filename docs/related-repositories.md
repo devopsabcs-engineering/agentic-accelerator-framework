@@ -18,8 +18,8 @@ agentic-accelerator-workshop            ← Framework workshop
 ├── accessibility-scan-workshop         ← 8 labs teaching accessibility scanning
 ├── finops-scan-demo-app                ← FinOps scanner + 5 demo apps
 ├── finops-scan-workshop                ← 8 labs teaching FinOps scanning
-├── code-quality-scan-demo-app          ← Code Quality scanner + 5 demo apps (planned)
-└── code-quality-scan-workshop          ← 8 labs teaching code quality scanning (planned)
+├── code-quality-scan-demo-app          ← Code Quality scanner + 5 demo apps
+└── code-quality-scan-workshop          ← 8 labs teaching code quality scanning
 ```
 
 ## Repository Catalog
@@ -32,8 +32,8 @@ agentic-accelerator-workshop            ← Framework workshop
 | 4 | `accessibility-scan-workshop` | Workshop | Accessibility | Active | PowerShell |
 | 5 | `finops-scan-demo-app` | Scanner Demo | FinOps | Active | PowerShell |
 | 6 | `finops-scan-workshop` | Workshop | FinOps | Active | PowerShell |
-| 7 | `code-quality-scan-demo-app` | Scanner Demo | Code Quality | Planned | TypeScript/Multi |
-| 8 | `code-quality-scan-workshop` | Workshop | Code Quality | Planned | PowerShell |
+| 7 | `code-quality-scan-demo-app` | Scanner Demo | Code Quality | Active | TypeScript/Multi |
+| 8 | `code-quality-scan-workshop` | Workshop | Code Quality | Active | PowerShell |
 
 All repositories live under the `devopsabcs-engineering` GitHub organization.
 
@@ -97,7 +97,7 @@ Eight hands-on labs teaching FinOps scanning and cost governance. Delivered as a
 
 ## Code Quality Domain
 
-### `code-quality-scan-demo-app` (Planned)
+### `code-quality-scan-demo-app`
 
 Multi-language code quality scanner using MegaLinter, jscpd, Lizard, and per-language coverage tools. Follows the 4-tool architecture defined in the framework's [code-quality-scan skill](../skills/code-quality-scan/SKILL.md).
 
@@ -108,9 +108,9 @@ Multi-language code quality scanner using MegaLinter, jscpd, Lizard, and per-lan
 | SARIF generation | Mixed: MegaLinter and jscpd native; Lizard via `lizard-to-sarif.py`, coverage via `coverage-to-sarif.py` |
 | Copilot artifacts | 2 agents (CodeQualityDetector, TestGenerator), 2 prompts, instructions, 1 skill |
 | SARIF category | `code-quality/coverage/` |
-| Power BI PBIP | `power-bi/` (planned — 4 pages: Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking) |
+| Power BI PBIP | `power-bi/` (4 pages: Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking) |
 
-### `code-quality-scan-workshop` (Planned)
+### `code-quality-scan-workshop`
 
 Eight hands-on labs teaching code quality scanning across multiple languages.
 
@@ -119,7 +119,7 @@ Eight hands-on labs teaching code quality scanning across multiple languages.
 | Labs | 8 labs (Lab 00–07) covering ESLint, Pylint, Checkstyle, dotnet-coverage, SARIF, CI/CD |
 | Delivery tiers | 5 tiers following the standard half-day/full-day/dual pattern |
 | Dual platform | GitHub Actions (Lab 06-github, Lab 07-github) and ADO Pipelines (Lab 06-ado, Lab 07-ado) |
-| Template repo | Yes (planned) |
+| Template repo | Yes |
 
 ## Two-Repo Pattern
 

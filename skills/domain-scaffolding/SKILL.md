@@ -23,6 +23,7 @@ The demo-app repo owns all scanning logic, Copilot customization artifacts, and 
 | Domain | Demo App | Workshop |
 |--------|----------|----------|
 | Accessibility | `accessibility-scan-demo-app` | `accessibility-scan-workshop` |
+| Code Quality | `code-quality-scan-demo-app` | `code-quality-scan-workshop` |
 | FinOps | `finops-scan-demo-app` | `finops-scan-workshop` |
 
 ## Demo App Repository Template
@@ -154,6 +155,12 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 ├── _config.yml                                  # Jekyll configuration
 ├── index.md                                     # Workshop home / GitHub Pages landing
 ├── Gemfile                                      # Jekyll dependencies
+├── .github/
+│   ├── agents/
+│   │   └── {domain}-workshop.agent.md           # Workshop-specific Copilot agent
+│   ├── instructions/
+│   │   └── {domain}-workshop.instructions.md    # Workshop-specific Copilot instructions
+│   └── copilot-instructions.md                  # Repo-wide Copilot instructions
 ├── _includes/
 │   └── head_custom.html                         # Mermaid v11 ESM support
 ├── .devcontainer/
@@ -607,6 +614,15 @@ Path pattern: {yyyy}/{MM}/{dd}/{appId}-{tool}.json
 |--------|---------|
 | `power-bi/scripts/deploy.ps1` | Deploy PBIP to Power BI workspace using `FabricPS-PBIP` module |
 | `power-bi/scripts/setup-parameters.ps1` | Configure data source parameters (storage account, container) |
+
+### Centralized Dashboard Integration
+
+In addition to per-domain PBIPs, the framework maintains a centralized `advsec-pbi-report-ado` dashboard that aggregates Advanced Security findings across all domains. Per-domain PBIPs integrate with this centralized dashboard through:
+
+1. **Shared `Repositories` dimension** — the `scan_domain` column identifies each domain (`Accessibility`, `CodeQuality`, `FinOps`), enabling cross-domain filtering.
+2. **Consistent fact table schema** — `finding_id`, `repo_name`, `rule_id`, `severity`, `tool_name`, and `scan_date` columns align across all domain PBIPs.
+3. **ADLS Gen2 path convention** — scan results stored at `{domain}/{yyyy}/{MM}/{dd}/{appId}-{tool}.json` allow the centralized report to discover data from all domains.
+4. **Three-tier architecture** — the centralized `advsec-pbi-report-ado` provides the cross-domain Advanced Security view, per-domain PBIPs provide deep dives, and together they offer a holistic view across all scanning domains.
 
 ## CI/CD Pipeline Templates
 

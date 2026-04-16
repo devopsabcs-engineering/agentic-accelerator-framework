@@ -5,7 +5,7 @@ applyTo: "**"
 
 # Domain Scaffolding Conventions
 
-These conventions apply when generating new domain scanner and workshop repositories. All scaffolded repos MUST follow these standards to maintain parity with existing Accessibility and FinOps domains.
+These conventions apply when generating new domain scanner and workshop repositories. All scaffolded repos MUST follow these standards to maintain parity with existing Accessibility, Code Quality, and FinOps domains.
 
 ## Naming Conventions
 
@@ -561,6 +561,46 @@ The workshop `_includes/head_custom.html` MUST use `startOnLoad: false` with an 
 </style>
 ```
 
+## Workshop Copilot Artifacts
+
+Workshop repositories MUST include a `.github/` directory with Copilot customization artifacts. These artifacts enable GitHub Copilot to provide domain-aware assistance to workshop participants.
+
+### Required Directory Structure
+
+```text
+{domain}-scan-workshop/
+└── .github/
+    ├── agents/
+    │   └── {domain}-workshop.agent.md           # Workshop-specific Copilot agent
+    ├── instructions/
+    │   └── {domain}-workshop.instructions.md    # Workshop-specific Copilot instructions
+    └── copilot-instructions.md                  # Repo-wide Copilot instructions
+```
+
+### Minimum Artifacts
+
+| Artifact | File | Purpose |
+|----------|------|---------|
+| Agent | `.github/agents/{domain}-workshop.agent.md` | Defines a workshop-aware Copilot agent with domain context, lab navigation, and troubleshooting capabilities |
+| Instructions | `.github/instructions/{domain}-workshop.instructions.md` | Provides domain-specific conventions, lab structure, and coding patterns for Copilot |
+| Copilot Instructions | `.github/copilot-instructions.md` | Repo-wide Copilot instructions referencing the domain agent and instructions files |
+
+### Agent File Conventions
+
+The workshop agent MUST:
+
+1. Reference the domain scan skill for scanning methodology context.
+2. Include tools for reading files, searching the codebase, and running terminal commands.
+3. Provide guidance on lab completion, troubleshooting common errors, and navigating the workshop structure.
+
+### Instructions File Conventions
+
+The workshop instructions MUST:
+
+1. Define the lab numbering scheme and directory structure.
+2. Specify the domain-specific tool stack and configuration.
+3. Reference the demo-app repository as the working directory for scanning labs.
+
 ## Power BI PBIP Conventions
 
 ### Directory Structure
@@ -589,6 +629,15 @@ One `.tmdl` file per table in `definition/tables/`. Use descriptive table names 
 ### Data Source
 
 Connect to Azure Data Lake Storage Gen2 via `AzureStorage.DataLake()` with OAuth (Organizational Account). Store scan results in date-partitioned paths: `{yyyy}/{MM}/{dd}/{appId}-{tool}.json`.
+
+### Centralized Dashboard Integration
+
+In addition to per-domain PBIPs, the framework provides a centralized `advsec-pbi-report-ado` dashboard that aggregates Advanced Security findings across all domains. New domain PBIPs MUST integrate with this centralized dashboard:
+
+1. **Shared `Repositories` dimension** — use the `scan_domain` column to identify the domain (e.g., `Accessibility`, `CodeQuality`, `FinOps`). This enables cross-domain filtering in the centralized report.
+2. **Consistent fact table schema** — align `finding_id`, `repo_name`, `rule_id`, `severity`, `tool_name`, and `scan_date` columns with the centralized schema so the AdvSec report can union findings across domains.
+3. **ADLS Gen2 path convention** — store scan results in `{domain}/{yyyy}/{MM}/{dd}/{appId}-{tool}.json` so the centralized report's Power Query expressions can discover data from all domains.
+4. **Three-tier architecture** — the centralized `advsec-pbi-report-ado` provides the Advanced Security cross-domain view, while per-domain PBIPs provide domain-specific deep dives. Together they offer a holistic view across all scanning domains.
 
 ## Workshop Lab Conventions
 

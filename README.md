@@ -183,7 +183,7 @@ Each domain has a scanner platform repo (demo-app) and a workshop template repo:
 
 ## DIY: Build a New Domain
 
-Ready to build the Code Quality domain from scratch? The framework includes a `DomainScaffolder` agent and complete automation artifacts for generating scanner demo-app and workshop repositories with full parity to the existing Accessibility and FinOps domains.
+Ready to build the Code Quality domain from scratch? The framework includes a `DomainScaffolder` agent and complete automation artifacts for generating scanner demo-app and workshop repositories with full parity to the existing Accessibility, Code Quality, and FinOps domains.
 
 See the **[DIY: Build the Code Quality Domain](docs/DIY-Code-Quality-Domain.md)** guide for step-by-step instructions covering repo creation, sample app development, SARIF converters, workshop labs, Power BI PBIP, and ADO pipeline setup.
 
