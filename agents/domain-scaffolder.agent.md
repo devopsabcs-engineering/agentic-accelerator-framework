@@ -109,6 +109,25 @@ Generate the complete `{domain}-scan-workshop` repository structure following th
 15. Create `.github/agents/{domain}-workshop.agent.md` — a Copilot agent definition for the workshop repository, following the naming pattern in the scaffolding skill.
 16. Create `.github/instructions/{domain}-workshop.instructions.md` — Copilot instructions specific to the workshop repository, covering lab conventions and domain context.
 17. Create `.github/copilot-instructions.md` — repo-wide Copilot instructions for the workshop repository, referencing the domain agent and instructions files.
+18. Generate bilingual French content under `fr/` directory:
+    a. Create `fr/index.md` with `nav_exclude: true`, `lang: fr`, `permalink: /fr/`, and French title "Accueil".
+    b. Create `fr/labs/` with French translations of all lab files using identical filenames.
+    c. French lab frontmatter MUST include `nav_exclude: true`, `lang: fr`, and `permalink: /fr/labs/lab-XX`.
+    d. French labs reference shared images via `../../images/lab-XX/` (two levels up from `fr/labs/`).
+    e. Code blocks remain in English (commands, YAML, code are not translated).
+    f. Screenshots are shared — do NOT duplicate images under `fr/`.
+19. Add flag emoji language switcher as the FIRST line of body content on every page:
+    a. English pages: `> 🇫🇷 **[Version française](fr/)**` (on index) or `> 🇫🇷 **[Version française](/fr/labs/lab-XX)**` (on labs).
+    b. French pages: `> 🇬🇧 **[English version](../)**` (on index) or appropriate relative path back to English.
+    c. This line appears ABOVE the logo image, making it the topmost content element.
+20. Create `_includes/components/sidebar.html` — custom Just the Docs sidebar override:
+    a. When `page.lang == 'fr'`: render French-only navigation by querying all pages with `lang: fr`, sorted by permalink.
+    b. When English (default): use standard Just the Docs `site_nav.html` include.
+    c. Use the exact sidebar template from the bilingual research document.
+21. Add cross-workshop links to the "Related Repositories" table in both `index.md` and `fr/index.md`:
+    a. Link to the framework repo, agentic workshop, and all other domain workshops.
+    b. Use format: `| [repo-name](https://github.com/devopsabcs-engineering/repo-name) | Description |`
+    c. Include links to: accessibility-scan-workshop, code-quality-scan-workshop, finops-scan-workshop, apm-security-scan-workshop.
 
 ### Step 6: Configure Repository Settings
 

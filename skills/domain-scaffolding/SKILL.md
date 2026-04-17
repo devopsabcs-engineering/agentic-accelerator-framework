@@ -162,7 +162,9 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 │   │   └── {domain}-workshop.instructions.md    # Workshop-specific Copilot instructions
 │   └── copilot-instructions.md                  # Repo-wide Copilot instructions
 ├── _includes/
-│   └── head_custom.html                         # Mermaid v11 ESM support
+│   ├── head_custom.html                         # Mermaid v11 ESM support
+│   ├── components/
+│   │   └── sidebar.html                         # Bilingual sidebar override
 ├── .devcontainer/
 │   ├── devcontainer.json                        # Dev container with prerequisites
 │   └── post-create.sh                           # Install domain-specific tools
@@ -189,6 +191,12 @@ The following directory tree is the canonical structure for any `{domain}-scan-w
 │   │   └── README.md                            # Fix violations via ADO
 │   └── lab-08-dashboard/
 │       └── README.md                            # Power BI PBIP, ADLS Gen2, OAuth
+├── fr/
+│   ├── index.md                                 # French home (permalink: /fr/)
+│   └── labs/
+│       ├── lab-00-{first-lab}.md                 # French labs (same filenames as English)
+│       ├── lab-01-{second-lab}.md
+│       └── ...                                  # Mirror all English lab filenames
 ├── images/
 │   ├── lab-00/
 │   │   └── README.md                            # Screenshot inventory (nav_exclude: true)
@@ -249,6 +257,135 @@ Workshop repos use Jekyll's `head_custom.html` include to enable Mermaid diagram
 ```
 
 This script loads Mermaid v11 as an ES module, converts fenced code blocks with the `mermaid` language identifier into `<div class="mermaid">` elements, then explicitly triggers rendering with `mermaid.run()`.
+
+## Bilingual Workshop Template
+
+All workshop repositories MUST include bilingual English/French content using directory structure conventions rather than i18n plugins.
+
+### French Page Frontmatter
+
+French pages require three additional frontmatter fields compared to English pages:
+
+```yaml
+---
+nav_exclude: true
+lang: fr
+layout: default
+title: Accueil
+nav_order: 0
+permalink: /fr/
+---
+```
+
+For French lab pages:
+
+```yaml
+---
+nav_exclude: true
+lang: fr
+permalink: /fr/labs/lab-XX
+title: "Labo XX : Titre en français"
+description: "Description en français"
+---
+```
+
+### Language Switcher
+
+Every page MUST include a flag emoji language switcher as the first line of body content (above the logo).
+
+English pages:
+
+```markdown
+> 🇫🇷 **[Version française](fr/)**
+```
+
+French pages:
+
+```markdown
+> 🇬🇧 **[English version](../)**
+```
+
+### Bilingual Sidebar Template
+
+Create `_includes/components/sidebar.html` with this content:
+
+```html
+{%- comment -%}
+  Override of just-the-docs sidebar component.
+  French pages (lang: fr) get a French navigation sidebar.
+  English pages get the original theme sidebar.
+{%- endcomment -%}
+
+{%- if page.lang == 'fr' -%}
+<header class="side-bar">
+  <div class="site-header">
+    <a href="{{ '/fr/' | relative_url }}" class="site-title lh-tight">
+      {{ site.title }}
+    </a>
+    <button id="menu-button" class="site-button btn-reset" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>
+    </button>
+  </div>
+  <nav aria-label="Main" id="site-nav" class="site-nav">
+    <ul class="nav-list">
+      {%- assign fr_pages = site.pages | where: "lang", "fr" | sort: "permalink" -%}
+      {%- for p in fr_pages -%}
+      <li class="nav-list-item">
+        <a href="{{ p.permalink | prepend: site.baseurl }}" class="nav-list-link{% if page.permalink == p.permalink %} active{% endif %}">
+          {{ p.title }}
+        </a>
+      </li>
+      {%- endfor -%}
+    </ul>
+  </nav>
+  <div class="d-md-block d-none site-footer">
+    {%- capture nav_footer_custom -%}{%- include nav_footer_custom.html -%}{%- endcapture -%}
+    {%- if nav_footer_custom != "" -%}
+      {{ nav_footer_custom }}
+    {%- else -%}
+      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    {%- endif -%}
+  </div>
+</header>
+
+{%- else -%}
+
+<header class="side-bar">
+  <div class="site-header">
+    <a href="{{ '/' | relative_url }}" class="site-title lh-tight">{%- include title.html -%}</a>
+    <button id="menu-button" class="site-button btn-reset" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>
+    </button>
+  </div>
+  {%- include_cached components/site_nav.html -%}
+  <div class="d-md-block d-none site-footer">
+    {%- capture nav_footer_custom -%}{%- include nav_footer_custom.html -%}{%- endcapture -%}
+    {%- if nav_footer_custom != "" -%}
+      {{ nav_footer_custom }}
+    {%- else -%}
+      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    {%- endif -%}
+  </div>
+</header>
+
+{%- endif -%}
+```
+
+### Translation Conventions
+
+| Translate | Keep in English |
+|-----------|-----------------|
+| Lab titles and descriptions | Code blocks and commands |
+| Prose instructions | YAML keys and file paths |
+| Exercise headers | Tool names and URLs |
+| Summary and next-steps text | Screenshot alt text |
+
+### Image References
+
+English labs: `../images/lab-XX/screenshot.png` (one level up from `labs/`)
+French labs: `../../images/lab-XX/screenshot.png` (two levels up from `fr/labs/`)
+
+Images are shared — NEVER duplicate under `fr/`.
 
 ## Bootstrap Script Templates
 

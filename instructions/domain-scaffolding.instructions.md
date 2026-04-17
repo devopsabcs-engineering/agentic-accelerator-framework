@@ -424,6 +424,202 @@ Just the Docs automatically adds a copy-to-clipboard button on every fenced code
 3. Place each copyable command in its own code block — do not mix commands with output in the same block.
 4. Use `powershell` as the language tag for all CLI commands (not `bash` or `shell`).
 
+## Bilingual Workshop Content (English / French)
+
+All workshop repositories MUST include bilingual English/French content. No i18n plugins are used — bilingual support is implemented through directory structure, frontmatter conventions, and a custom sidebar override.
+
+### Directory Structure
+
+English content lives at the repository root. French content lives under a `fr/` directory with identical filenames.
+
+```text
+{domain}-scan-workshop/
+├── index.md                      # English home (permalink: /)
+├── labs/
+│   ├── lab-00-setup.md           # English labs
+│   ├── lab-01.md
+│   └── ...
+├── fr/
+│   ├── index.md                  # French home (permalink: /fr/)
+│   └── labs/
+│       ├── lab-00-setup.md       # French labs (same filenames)
+│       ├── lab-01.md
+│       └── ...
+├── images/                       # Shared images (NOT duplicated)
+│   ├── lab-00/
+│   └── ...
+└── _includes/
+    └── components/
+        └── sidebar.html          # Bilingual sidebar override
+```
+
+There is NO `/en/` directory. English is always the root.
+
+### Frontmatter Requirements
+
+| Field | English Pages | French Pages |
+|-------|---------------|--------------|
+| `nav_exclude` | Not set (default false) | `true` |
+| `lang` | Not set | `fr` |
+| `layout` | `default` (on index only) | `default` (on index only) |
+| `permalink` | `/labs/lab-XX` | `/fr/labs/lab-XX` |
+| `title` | English title | French title |
+| `description` | English description | French description |
+
+### Language Switcher Convention
+
+Every page MUST include a flag emoji language switcher as the FIRST line of body content, appearing above the logo image.
+
+English pages:
+
+```markdown
+> 🇫🇷 **[Version française](fr/)**
+```
+
+French pages:
+
+```markdown
+> 🇬🇧 **[English version](../)**
+```
+
+For lab pages, use the appropriate permalink path (e.g., `> 🇫🇷 **[Version française](/fr/labs/lab-XX)**`).
+
+The language switcher is pure Markdown — no HTML, CSS, or JavaScript is required.
+
+### Custom Sidebar Override
+
+Create `_includes/components/sidebar.html` to provide language-aware sidebar navigation. This overrides the default Just the Docs sidebar component.
+
+When `page.lang == 'fr'`:
+
+- Query all pages with `lang: fr` frontmatter
+- Sort by permalink
+- Render a flat navigation list with French titles
+
+When English (default):
+
+- Use the standard Just the Docs `site_nav.html` include
+
+Full template:
+
+```html
+{%- comment -%}
+  Override of just-the-docs sidebar component.
+  French pages (lang: fr) get a French navigation sidebar.
+  English pages get the original theme sidebar.
+{%- endcomment -%}
+
+{%- if page.lang == 'fr' -%}
+<header class="side-bar">
+  <div class="site-header">
+    <a href="{{ '/fr/' | relative_url }}" class="site-title lh-tight">
+      {{ site.title }}
+    </a>
+    <button id="menu-button" class="site-button btn-reset" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>
+    </button>
+  </div>
+  <nav aria-label="Main" id="site-nav" class="site-nav">
+    <ul class="nav-list">
+      {%- assign fr_pages = site.pages | where: "lang", "fr" | sort: "permalink" -%}
+      {%- for p in fr_pages -%}
+      <li class="nav-list-item">
+        <a href="{{ p.permalink | prepend: site.baseurl }}" class="nav-list-link{% if page.permalink == p.permalink %} active{% endif %}">
+          {{ p.title }}
+        </a>
+      </li>
+      {%- endfor -%}
+    </ul>
+  </nav>
+  <div class="d-md-block d-none site-footer">
+    {%- capture nav_footer_custom -%}{%- include nav_footer_custom.html -%}{%- endcapture -%}
+    {%- if nav_footer_custom != "" -%}
+      {{ nav_footer_custom }}
+    {%- else -%}
+      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    {%- endif -%}
+  </div>
+</header>
+
+{%- else -%}
+
+<header class="side-bar">
+  <div class="site-header">
+    <a href="{{ '/' | relative_url }}" class="site-title lh-tight">{%- include title.html -%}</a>
+    <button id="menu-button" class="site-button btn-reset" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>
+    </button>
+  </div>
+  {%- include_cached components/site_nav.html -%}
+  <div class="d-md-block d-none site-footer">
+    {%- capture nav_footer_custom -%}{%- include nav_footer_custom.html -%}{%- endcapture -%}
+    {%- if nav_footer_custom != "" -%}
+      {{ nav_footer_custom }}
+    {%- else -%}
+      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    {%- endif -%}
+  </div>
+</header>
+
+{%- endif -%}
+```
+
+### Translation Conventions
+
+| Translate | Keep in English |
+|-----------|-----------------|
+| Lab titles and descriptions | Code blocks and commands |
+| Prose instructions | YAML frontmatter keys |
+| Exercise headers | File paths and tool names |
+| Summary and next-steps text | Screenshot alt text |
+| Table headers and cell text | URLs and API endpoints |
+
+Common translations:
+
+- Lab → Labo
+- Exercise → Exercice
+- Checkpoint → Point de vérification
+- Next Steps → Prochaines étapes
+- Prerequisites → Prérequis
+
+### Image References
+
+English labs reference images from one level up:
+
+```markdown
+![Description](../images/lab-XX/screenshot.png)
+```
+
+French labs reference images from two levels up (shared, not duplicated):
+
+```markdown
+![Description](../../images/lab-XX/screenshot.png)
+```
+
+NEVER duplicate images under `fr/`. All screenshots are language-neutral and shared.
+
+## Cross-Workshop Navigation
+
+Each workshop `index.md` and `fr/index.md` MUST include a "Related Repositories" table linking to ALL other domain workshops. When scaffolding a new domain, update all existing workshop repos to add the new domain link.
+
+### Related Repositories Table Template
+
+```markdown
+## Related Repositories
+
+| Repository | Description |
+|------------|-------------|
+| [agentic-accelerator-framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework) | Framework agents, instructions, and skills |
+| [{domain}-scan-demo-app](https://github.com/devopsabcs-engineering/{domain}-scan-demo-app) | Scanner platform and demo applications |
+| [agentic-accelerator-workshop](https://github.com/devopsabcs-engineering/agentic-accelerator-workshop) | Main workshop (all domains) |
+| [accessibility-scan-workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) | Accessibility scanning workshop |
+| [code-quality-scan-workshop](https://devopsabcs-engineering.github.io/code-quality-scan-workshop/) | Code quality scanning workshop |
+| [finops-scan-workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) | FinOps scanning workshop |
+| [apm-security-scan-workshop](https://devopsabcs-engineering.github.io/apm-security-scan-workshop/) | APM Security scanning workshop |
+```
+
+The French `fr/index.md` MUST include the same table with French descriptions.
+
 ## Repository Metadata
 
 Both generated repositories MUST have metadata configured via bootstrap scripts or repository setup steps.

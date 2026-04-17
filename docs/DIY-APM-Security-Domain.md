@@ -273,6 +273,117 @@ Mirror every GitHub Actions workflow in ADO YAML pipelines:
 
 Use `AdvancedSecurity-Publish@1` for SARIF upload in ADO pipelines.
 
+## Step 11: Add Bilingual French Content
+
+All workshop repositories in the Agentic Accelerator Framework include bilingual English/French support using a directory-based approach with no i18n plugins.
+
+### French Directory Structure
+
+Create a `fr/` directory at the workshop root with the following structure:
+
+```text
+fr/
+├── index.md                      # French home (permalink: /fr/)
+└── labs/
+    ├── lab-00-prerequisites.md   # French labs (same filenames as English)
+    ├── lab-01-explore-violations.md
+    ├── lab-02-unicode-scanning.md
+    ├── lab-03-lockfile-integrity.md
+    ├── lab-04-semantic-patterns.md
+    ├── lab-05-mcp-validation.md
+    ├── lab-06-github-security-tab.md
+    ├── lab-06-ado-advanced-security.md
+    ├── lab-07-github-actions.md
+    └── lab-07-ado-pipelines.md
+```
+
+### French Index Page
+
+Create `fr/index.md` with:
+
+```yaml
+---
+nav_exclude: true
+lang: fr
+layout: default
+title: Accueil
+nav_order: 0
+permalink: /fr/
+---
+
+> 🇬🇧 **[English version](../)**
+```
+
+### French Lab Frontmatter
+
+Every French lab file MUST include:
+
+```yaml
+---
+nav_exclude: true
+lang: fr
+permalink: /fr/labs/lab-XX
+title: "Labo XX : Titre en français"
+description: "Description en français"
+---
+
+> 🇬🇧 **[English version](../../labs/lab-XX)**
+```
+
+### Language Switcher
+
+Add a flag emoji language switcher as the FIRST line of body content on EVERY page:
+
+- **English pages**: `> 🇫🇷 **[Version française](fr/)**` (on `index.md`) or `> 🇫🇷 **[Version française](/fr/labs/lab-XX)**` (on labs)
+- **French pages**: `> 🇬🇧 **[English version](../)**` (on `fr/index.md`) or appropriate relative path
+
+This line appears ABOVE the logo image, making it the topmost visible content element.
+
+### Custom Sidebar Override
+
+Create `_includes/components/sidebar.html` to provide language-aware sidebar navigation:
+
+- When `page.lang == 'fr'`: renders a French-only sidebar by querying pages with `lang: fr`, sorted by permalink
+- When English (default): uses the standard Just the Docs `site_nav.html` auto-generation
+
+This ensures French users see only French lab titles in the sidebar and English users see only English lab titles. The sidebar template is documented in `skills/domain-scaffolding/SKILL.md`.
+
+### Translation Conventions
+
+- Translate lab titles, descriptions, prose instructions, and exercise headers
+- Keep code blocks, commands, YAML, file paths, tool names, and URLs in English
+- Screenshots are shared (not duplicated) — French labs reference `../../images/lab-XX/`
+- Common translations: Lab → Labo, Exercise → Exercice, Checkpoint → Point de vérification, Next Steps → Prochaines étapes
+
+## Step 12: Add Cross-Workshop Links
+
+Each workshop in the ecosystem links to all other domain workshops for discoverability.
+
+### Related Repositories Table
+
+Add a "Related Repositories" table to both `index.md` and `fr/index.md`:
+
+```markdown
+## Related Repositories
+
+| Repository | Description |
+|------------|-------------|
+| [agentic-accelerator-framework](https://github.com/devopsabcs-engineering/agentic-accelerator-framework) | Framework agents, instructions, and skills |
+| [apm-security-scan-demo-app](https://github.com/devopsabcs-engineering/apm-security-scan-demo-app) | Scanner platform and demo applications |
+| [agentic-accelerator-workshop](https://github.com/devopsabcs-engineering/agentic-accelerator-workshop) | Main workshop (all domains) |
+| [accessibility-scan-workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) | Accessibility scanning workshop |
+| [code-quality-scan-workshop](https://devopsabcs-engineering.github.io/code-quality-scan-workshop/) | Code quality scanning workshop |
+| [finops-scan-workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) | FinOps scanning workshop |
+```
+
+### Update Existing Workshops
+
+When the APM Security workshop is published, update the "Related Repositories" tables in all existing workshop repos to add:
+
+```markdown
+| [apm-security-scan-workshop](https://devopsabcs-engineering.github.io/apm-security-scan-workshop/) | APM Security scanning workshop |
+```
+
 ## Validation Checklist
 
 Before considering the domain complete, verify:
@@ -287,6 +398,10 @@ Before considering the domain complete, verify:
 - [ ] Workshop labs render correctly on GitHub Pages
 - [ ] Power BI PBIP connects to data source and renders all 4 pages
 - [ ] Bootstrap scripts complete without errors for both GitHub and ADO
+- [ ] Language switcher (`> 🇫🇷` / `> 🇬🇧`) appears above logo on every page
+- [ ] French sidebar shows only French lab titles; English sidebar shows only English
+- [ ] Cross-workshop links present in both English and French `index.md`
+- [ ] French labs reference shared images via `../../images/lab-XX/` paths
 
 ## References
 
