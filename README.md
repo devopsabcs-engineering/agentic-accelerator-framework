@@ -23,11 +23,11 @@ keywords:
 
 <p align="center">
   <strong>GitHub Advanced Security + GitHub Copilot Custom Agents + Microsoft Defender for Cloud</strong><br>
-  <em>Shift-left security and compliance across Security, Accessibility, Code Quality, and FinOps</em>
+  <em>Shift-left security and compliance across Security, Accessibility, Code Quality, FinOps, and APM Security</em>
 </p>
 
 <p align="center">
-  <a href="#agent-inventory-15-agents"><img src="https://img.shields.io/badge/agents-15-blue" alt="15 Agents"></a>
+  <a href="#agent-inventory-17-agents"><img src="https://img.shields.io/badge/agents-17-blue" alt="17 Agents"></a>
   <a href="#ci-cd-workflows"><img src="https://img.shields.io/badge/SARIF-v2.1.0-green" alt="SARIF v2.1.0"></a>
   <a href="https://github.com/devopsabcs-engineering/agentic-accelerator-framework/actions"><img src="https://img.shields.io/badge/CI%2FCD-7%20workflows-orange" alt="7 CI/CD Workflows"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="MIT License"></a>
@@ -37,7 +37,7 @@ keywords:
 
 ## Overview
 
-The Agentic Accelerator Framework provides a repeatable, org-wide approach to shifting security and compliance left using custom GitHub Copilot agents. It covers four domains — Security, Accessibility, Code Quality, and FinOps — with SARIF-based CI/CD integration across GitHub Actions and Azure DevOps.
+The Agentic Accelerator Framework provides a repeatable, org-wide approach to shifting security and compliance left using custom GitHub Copilot agents. It covers five domains — Security, Accessibility, Code Quality, FinOps, and APM Security — with SARIF-based CI/CD integration across GitHub Actions and Azure DevOps.
 
 The framework operates on a "shift-left then scale" principle:
 
@@ -89,7 +89,7 @@ graph TB
     end
 ```
 
-## Agent Inventory (15 Agents)
+## Agent Inventory (17 Agents)
 
 | Domain         | Agents                                                                                                         | SARIF Category         | Description                                           |
 |----------------|----------------------------------------------------------------------------------------------------------------|------------------------|-------------------------------------------------------|
@@ -97,6 +97,7 @@ graph TB
 | **Accessibility** | A11yDetector, A11yResolver (2)                                                                              | `accessibility-scan/`  | WCAG 2.2 Level AA compliance detection and remediation |
 | **Code Quality** | CodeQualityDetector, TestGenerator (2)                                                                       | `code-quality/coverage/` | Code coverage, linting, and test generation          |
 | **FinOps**     | CostAnalysisAgent, FinOpsGovernanceAgent, CostAnomalyDetector, CostOptimizerAgent, DeploymentCostGateAgent (5) | `finops-finding/v1`    | Azure cost optimization and governance                |
+| **APM Security** | APMSecurityDetector, APMSecurityResolver (2)                                                                 | `apm-security/`        | Agent configuration file security scanning            |
 
 ## Repository Structure
 
@@ -170,6 +171,7 @@ samples/
 * [Accessibility Scan Workshop](https://devopsabcs-engineering.github.io/accessibility-scan-workshop/) — Workshop for WCAG 2.2 Level AA accessibility scanning and remediation using custom agents
 * [Code Quality Scan Workshop](https://devopsabcs-engineering.github.io/code-quality-scan-workshop/) — Workshop for code quality scanning with ESLint, Ruff, jscpd, Lizard, and coverage tools
 * [FinOps Scan Workshop](https://devopsabcs-engineering.github.io/finops-scan-workshop/) — Workshop for Azure cost optimization and FinOps governance using custom agents
+* [APM Security Scan Workshop](https://devopsabcs-engineering.github.io/apm-security-scan-workshop/) — Workshop for agent configuration file security scanning with Unicode, semantic, and MCP validation engines
 
 ## Domain Repositories
 
@@ -180,12 +182,13 @@ Each domain has a scanner platform repo (demo-app) and a workshop template repo:
 | **Accessibility** | [accessibility-scan-demo-app](https://github.com/devopsabcs-engineering/accessibility-scan-demo-app) | [accessibility-scan-workshop](https://github.com/devopsabcs-engineering/accessibility-scan-workshop) |
 | **Code Quality** | [code-quality-scan-demo-app](https://github.com/devopsabcs-engineering/code-quality-scan-demo-app) | [code-quality-scan-workshop](https://github.com/devopsabcs-engineering/code-quality-scan-workshop) |
 | **FinOps** | [finops-scan-demo-app](https://github.com/devopsabcs-engineering/finops-scan-demo-app) | [finops-scan-workshop](https://github.com/devopsabcs-engineering/finops-scan-workshop) |
+| **APM Security** | [apm-security-scan-demo-app](https://github.com/devopsabcs-engineering/apm-security-scan-demo-app) | [apm-security-scan-workshop](https://github.com/devopsabcs-engineering/apm-security-scan-workshop) |
 
 ## DIY: Build a New Domain
 
 Ready to build the Code Quality domain from scratch? The framework includes a `DomainScaffolder` agent and complete automation artifacts for generating scanner demo-app and workshop repositories with full parity to the existing Accessibility, Code Quality, and FinOps domains.
 
-See the **[DIY: Build the Code Quality Domain](docs/DIY-Code-Quality-Domain.md)** guide for step-by-step instructions covering repo creation, sample app development, SARIF converters, workshop labs, Power BI PBIP, and ADO pipeline setup.
+See the **[DIY: Build the APM Security Domain](docs/DIY-APM-Security-Domain.md)** guide for step-by-step instructions covering repo creation, sample app development, SARIF converters, workshop labs, Power BI PBIP, and ADO pipeline setup.
 
 ## License
 
