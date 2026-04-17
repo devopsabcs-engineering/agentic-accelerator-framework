@@ -67,7 +67,7 @@ graph TB
 
 ## Agent Domain Categories
 
-The framework organizes 15 agents into four domains, each producing SARIF-compliant output for centralized governance.
+The framework organizes 17 agents into five domains, each producing SARIF-compliant output for centralized governance.
 
 | Domain        | Agents                                                                                                         | SARIF Category         | Reference Repository    |
 |---------------|----------------------------------------------------------------------------------------------------------------|------------------------|-------------------------|
@@ -75,6 +75,7 @@ The framework organizes 15 agents into four domains, each producing SARIF-compli
 | Accessibility | A11yDetector, A11yResolver (2)                                                                                 | `accessibility-scan/`  | `accessibility-scan-demo-app` |
 | Code Quality  | CodeQualityDetector, TestGenerator (2)                                                                         | `code-quality/coverage/` | This repository       |
 | FinOps        | CostAnalysisAgent, FinOpsGovernanceAgent, CostAnomalyDetector, CostOptimizerAgent, DeploymentCostGateAgent (5) | `finops-finding/v1`    | `cost-analysis-ai`      |
+| APM Security  | APMSecurityDetector, APMSecurityResolver (2)                                                                   | `apm-security/`        | `apm-security-scan-demo-app` |
 
 ## Four-Level Deployment Model
 

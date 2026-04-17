@@ -1,0 +1,96 @@
+# APM Security Scan — Sample GitHub Actions Workflow
+# Scans agent configuration files for security violations using a 4-engine architecture.
+# Reference pipeline for the APM Security domain of the Agentic Accelerator Framework.
+
+name: APM Security Scan
+
+on:
+  pull_request:
+    paths:
+      - 'apm.yml'
+      - 'apm.lock.yaml'
+      - 'agents/**'
+      - 'instructions/**'
+      - 'prompts/**'
+      - 'skills/**'
+      - '**/*.agent.md'
+      - '**/*.instructions.md'
+      - '**/*.prompt.md'
+      - '**/SKILL.md'
+      - '.github/copilot-instructions.md'
+      - 'mcp.json'
+  push:
+    branches: [main]
+    paths:
+      - 'apm.yml'
+      - 'apm.lock.yaml'
+      - 'agents/**'
+      - 'instructions/**'
+      - 'prompts/**'
+      - 'skills/**'
+      - '**/*.agent.md'
+      - '**/*.instructions.md'
+      - '**/*.prompt.md'
+      - '**/SKILL.md'
+      - '.github/copilot-instructions.md'
+      - 'mcp.json'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  apm-audit:
+    name: "Engine 1+2: Unicode & Lockfile"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/apm-action@v1
+        id: apm
+        with:
+          audit-report: true
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.apm.outputs.audit-report-path
+        with:
+          sarif_file: ${{ steps.apm.outputs.audit-report-path }}
+          category: apm-security/unicode
+
+  semantic-scan:
+    name: "Engine 3: Semantic Patterns"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run semantic pattern scanner
+        run: python src/converters/semantic-to-sarif.py --output results.sarif
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+          category: apm-security/semantic
+
+  mcp-validation:
+    name: "Engine 4: MCP Configuration"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate MCP configuration
+        run: python src/converters/mcp-to-sarif.py --output mcp-results.sarif
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: mcp-results.sarif
+          category: apm-security/mcp

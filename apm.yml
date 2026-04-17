@@ -78,6 +78,15 @@ dependencies:
     path: agents/deployment-cost-gate-agent.agent.md
     description: "IaC deployment cost estimation and budget gating"
 
+  # ── APM Security Agents ──────────────────────────────────────────────
+  apm-security-detector:
+    path: agents/apm-security-detector.agent.md
+    description: "Agent configuration file security scanner — APM audit, semantic patterns, MCP validation, OWASP LLM Top 10"
+
+  apm-security-resolver:
+    path: agents/apm-security-resolver.agent.md
+    description: "Agent configuration security remediation — Unicode stripping, CODEOWNERS, MCP allowlists, supply chain hardening"
+
   # ── Instructions ─────────────────────────────────────────────────────
   wcag22-rules:
     path: instructions/wcag22-rules.instructions.md
@@ -94,6 +103,10 @@ dependencies:
   domain-scaffolding:
     path: instructions/domain-scaffolding.instructions.md
     description: "Conventions for scaffolding new domain scanner and workshop repositories"
+
+  apm-security:
+    path: instructions/apm-security.instructions.md
+    description: "APM Security rules — agent config scanning thresholds, OWASP LLM mapping, 4-engine architecture"
 
   # ── Prompts ──────────────────────────────────────────────────────────
   a11y-scan:
@@ -116,6 +129,14 @@ dependencies:
     path: prompts/scaffold-domain.prompt.md
     description: "Prompt template for domain repository scaffolding"
 
+  apm-security-scan:
+    path: prompts/apm-security-scan.prompt.md
+    description: "Prompt template for agent configuration security scanning workflow"
+
+  apm-security-fix:
+    path: prompts/apm-security-fix.prompt.md
+    description: "Prompt template for agent configuration security remediation workflow"
+
   # ── Skills ───────────────────────────────────────────────────────────
   a11y-scan-skill:
     path: skills/a11y-scan/SKILL.md
@@ -132,6 +153,10 @@ dependencies:
   domain-scaffolding-skill:
     path: skills/domain-scaffolding/SKILL.md
     description: "Domain scaffolding templates and patterns skill"
+
+  apm-security-scan-skill:
+    path: skills/apm-security-scan/SKILL.md
+    description: "On-demand agent configuration security scanning skill"
 
 security:
   audit:

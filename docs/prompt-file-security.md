@@ -182,6 +182,22 @@ The agent configuration supply chain mirrors traditional software supply chain a
 | Malicious GitHub Action | Hook configuration executing shell commands |
 | Dependency confusion | Organization vs. repository instruction conflicts |
 
+## APM Security Domain Artifacts
+
+The threat model described in this document is operationalized by the **APM Security** domain. The following framework artifacts implement the 4-engine scanning architecture:
+
+| Artifact | Path | Purpose |
+|----------|------|---------|
+| Detector agent | `agents/apm-security-detector.agent.md` | 4-engine scanner with OWASP LLM mapping |
+| Resolver agent | `agents/apm-security-resolver.agent.md` | Automated remediation for all 4 engines |
+| Instructions | `instructions/apm-security.instructions.md` | Scanning rules and CI gate thresholds |
+| Scan prompt | `prompts/apm-security-scan.prompt.md` | Scan workflow entry point |
+| Fix prompt | `prompts/apm-security-fix.prompt.md` | Remediation workflow entry point |
+| Domain skill | `skills/apm-security-scan/SKILL.md` | Comprehensive domain knowledge package |
+| GH Actions sample | `samples/github-actions/apm-security-scan.yml` | Reference CI pipeline |
+| ADO pipeline sample | `samples/azure-devops/apm-security-pipeline.yml` | Reference ADO pipeline |
+| DIY guide | `docs/DIY-APM-Security-Domain.md` | Step-by-step domain build guide |
+
 ## References
 
 - [OWASP Top 10 for LLM Applications (2025)](https://genai.owasp.org/llm-top-10/)

@@ -57,47 +57,47 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 
 ### Demo App Repos
 
-| Feature | Accessibility (`accessibility-scan-demo-app`) | Code Quality (`code-quality-scan-demo-app`) | FinOps (`finops-scan-demo-app`) |
-|---------|-----------------------------------------------|----------------------------------------------|----------------------------------|
-| **Sample apps** | 5 web apps (Rust, C#, Java, Python, Go) with 15+ WCAG violations each | 5 apps (TypeScript, Python, C#, Java, Go) with 15+ quality violations each (complexity, coverage, duplication, lint) | 5 IaC apps (Bicep + HTML) with cost governance violations |
-| **Centralized scanner** | Full-stack Next.js 15 app (Web UI, REST API, CLI, GitHub Action) | MegaLinter multi-language orchestrator with 4-tool architecture | Central `finops-scan.yml` workflow with matrix strategy |
-| **Scanner deployment** | Azure App Service (Docker container) | GitHub Actions CI workflow (no deployed scanner app) | GitHub Actions only (no deployed scanner app) |
-| **Open source tools** | axe-core 4.11, IBM Equal Access 4.0 | MegaLinter (ESLint, Ruff, golangci-lint, .NET Analyzers), jscpd, Lizard, Jest, pytest-cov, JaCoCo, Go cover | PSRule for Azure, Checkov, Cloud Custodian, Infracost |
-| **Custom tools** | 5 custom Playwright checks, CLI, SARIF generator, scoring engine, PDF/HTML reports | 2 Python SARIF converters (`lizard-to-sarif.py`, `coverage-to-sarif.py`), MegaLinter config, jscpd config | 2 Python SARIF converters, 4 Cloud Custodian policies |
-| **SARIF generation** | Native (built-in SARIF v2.1.0 generator) | Mixed: ESLint, Ruff, golangci-lint, .NET Analyzers, jscpd native SARIF; Lizard and Coverage via 2 Python converters | Mixed: PSRule and Checkov native; Cloud Custodian and Infracost via 2 Python converters |
-| **SARIF upload** | `codeql-action/upload-sarif@v4` (same-repo) | `codeql-action/upload-sarif@v4` (same-repo) | Cross-repo upload via GitHub REST API (`gh api`) |
-| **Copilot agents** | 2 (a11y-detector, a11y-resolver) | 2 (CodeQualityDetector, CodeQualityResolver) | 5 (CostAnalysis, FinOpsGovernance, CostAnomalyDetector, CostOptimizer, DeploymentCostGate) |
-| **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (code-quality-scan, code-quality-fix) | 2 (finops-scan, finops-fix) |
-| **Copilot instructions** | 3 (wcag22-rules, a11y-remediation, ado-workflow) | 2 (code-quality, ado-workflow) | 2 (finops-governance, ado-workflow) |
-| **Copilot skills** | 0 | 1 (code-quality-scan) | 1 (finops-scan) |
-| **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) |
-| **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) |
-| **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
-| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI |
-| **Power BI PBIP** | `a11y-pbi-report/A11yReport.pbip` (1 page, 7 dimensions) | `power-bi/CodeQualityReport.pbip` (4 pages planned) | `power-bi/FinOpsReport.pbip` (1 page, 5 dimensions) |
-| **GitHub Actions** | 5 workflows (ci, deploy, a11y-scan, deploy-all, scan-all) | 4 workflows (code-quality-scan, code-quality-lint-gate, deploy-all, teardown-all) | 4 workflows (finops-scan, finops-cost-gate, deploy-all, teardown-all) |
-| **Azure DevOps pipelines** | 10 pipelines + 5 templates (ci, ci-cd, deploy, deploy-all, a11y-scan, a11y-scan-advancedsecurity, adv-sec-scan, scan-all, scan-and-store + 5 templates) | 5 pipelines + 4 templates (code-quality-scan, code-quality-lint-gate, deploy-all, scan-and-store, teardown-all + app-repo-scan, deploy-app, scan-app, teardown-app templates) | 5 pipelines + 2 templates (finops-scan, finops-cost-gate, deploy-all, teardown-all, scan-and-store + 2 templates) |
-| **Power BI docs** | PBIP implemented (`a11y-pbi-report/A11yReport.pbip`) + deployment scripts | 3 docs (code-quality-scan-overview, power-bi-data-model, workshop-setup) | 5 docs (data model, dashboard design, Power Query M, Resource Graph, FinOps Toolkit) |
-| **Primary language** | TypeScript 81.8% | Polyglot: TypeScript, Python, C#, Java, Go (5 languages across 5 demo apps) | PowerShell 59.8%, Bicep 16.4%, Python 13.6%, HCL 5.8%, HTML 4.1% |
+| Feature | Accessibility (`accessibility-scan-demo-app`) | Code Quality (`code-quality-scan-demo-app`) | FinOps (`finops-scan-demo-app`) | APM Security (`apm-security-scan-demo-app`) |
+|---------|-----------------------------------------------|----------------------------------------------|----------------------------------|----------------------------------------------|
+| **Sample apps** | 5 web apps (Rust, C#, Java, Python, Go) with 15+ WCAG violations each | 5 apps (TypeScript, Python, C#, Java, Go) with 15+ quality violations each (complexity, coverage, duplication, lint) | 5 IaC apps (Bicep + HTML) with cost governance violations | 5 apps (Next.js, Python, ASP.NET, Java, Go) with 15+ agent config violations each |
+| **Centralized scanner** | Full-stack Next.js 15 app (Web UI, REST API, CLI, GitHub Action) | MegaLinter multi-language orchestrator with 4-tool architecture | Central `finops-scan.yml` workflow with matrix strategy | 4-engine architecture (APM audit, lockfile, semantic, MCP) |
+| **Scanner deployment** | Azure App Service (Docker container) | GitHub Actions CI workflow (no deployed scanner app) | GitHub Actions only (no deployed scanner app) | GitHub Actions + ADO Pipelines only (no deployed scanner app) |
+| **Open source tools** | axe-core 4.11, IBM Equal Access 4.0 | MegaLinter (ESLint, Ruff, golangci-lint, .NET Analyzers), jscpd, Lizard, Jest, pytest-cov, JaCoCo, Go cover | PSRule for Azure, Checkov, Cloud Custodian, Infracost | Microsoft APM (`apm audit`, `apm audit --ci`) |
+| **Custom tools** | 5 custom Playwright checks, CLI, SARIF generator, scoring engine, PDF/HTML reports | 2 Python SARIF converters (`lizard-to-sarif.py`, `coverage-to-sarif.py`), MegaLinter config, jscpd config | 2 Python SARIF converters, 4 Cloud Custodian policies | 2 Python SARIF converters (`semantic-to-sarif.py`, `mcp-to-sarif.py`) |
+| **SARIF generation** | Native (built-in SARIF v2.1.0 generator) | Mixed: ESLint, Ruff, golangci-lint, .NET Analyzers, jscpd native SARIF; Lizard and Coverage via 2 Python converters | Mixed: PSRule and Checkov native; Cloud Custodian and Infracost via 2 Python converters | Mixed: APM audit native SARIF; semantic and MCP via 2 Python converters |
+| **SARIF upload** | `codeql-action/upload-sarif@v4` (same-repo) | `codeql-action/upload-sarif@v4` (same-repo) | Cross-repo upload via GitHub REST API (`gh api`) | `codeql-action/upload-sarif@v3` (same-repo) |
+| **Copilot agents** | 2 (a11y-detector, a11y-resolver) | 2 (CodeQualityDetector, CodeQualityResolver) | 5 (CostAnalysis, FinOpsGovernance, CostAnomalyDetector, CostOptimizer, DeploymentCostGate) | 2 (APMSecurityDetector, APMSecurityResolver) |
+| **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (code-quality-scan, code-quality-fix) | 2 (finops-scan, finops-fix) | 2 (apm-security-scan, apm-security-fix) |
+| **Copilot instructions** | 3 (wcag22-rules, a11y-remediation, ado-workflow) | 2 (code-quality, ado-workflow) | 2 (finops-governance, ado-workflow) | 2 (apm-security, ado-workflow) |
+| **Copilot skills** | 0 | 1 (code-quality-scan) | 1 (finops-scan) | 1 (apm-security-scan) |
+| **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) |
+| **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines |
+| **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
+| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI |
+| **Power BI PBIP** | `a11y-pbi-report/A11yReport.pbip` (1 page, 7 dimensions) | `power-bi/CodeQualityReport.pbip` (4 pages planned) | `power-bi/FinOpsReport.pbip` (1 page, 5 dimensions) | `power-bi/APMSecurityReport.pbip` (4 pages, 6 dimensions) |
+| **GitHub Actions** | 5 workflows (ci, deploy, a11y-scan, deploy-all, scan-all) | 4 workflows (code-quality-scan, code-quality-lint-gate, deploy-all, teardown-all) | 4 workflows (finops-scan, finops-cost-gate, deploy-all, teardown-all) | 4 workflows (apm-security-scan, apm-security-gate, deploy-all, teardown-all) |
+| **Azure DevOps pipelines** | 10 pipelines + 5 templates (ci, ci-cd, deploy, deploy-all, a11y-scan, a11y-scan-advancedsecurity, adv-sec-scan, scan-all, scan-and-store + 5 templates) | 5 pipelines + 4 templates (code-quality-scan, code-quality-lint-gate, deploy-all, scan-and-store, teardown-all + app-repo-scan, deploy-app, scan-app, teardown-app templates) | 5 pipelines + 2 templates (finops-scan, finops-cost-gate, deploy-all, teardown-all, scan-and-store + 2 templates) | 5 pipelines (apm-security-scan, apm-security-gate, deploy-all, teardown-all, scan-and-store) |
+| **Power BI docs** | PBIP implemented (`a11y-pbi-report/A11yReport.pbip`) + deployment scripts | 3 docs (code-quality-scan-overview, power-bi-data-model, workshop-setup) | 5 docs (data model, dashboard design, Power Query M, Resource Graph, FinOps Toolkit) | Planned |
+| **Primary language** | TypeScript 81.8% | Polyglot: TypeScript, Python, C#, Java, Go (5 languages across 5 demo apps) | PowerShell 59.8%, Bicep 16.4%, Python 13.6%, HCL 5.8%, HTML 4.1% | Python (converters), Markdown (agent configs), PowerShell (scripts) |
 
 ### Workshop Repos
 
-| Feature | Accessibility (`accessibility-scan-workshop`) | Code Quality (`code-quality-scan-workshop`) | FinOps (`finops-scan-workshop`) |
-|---------|------------------------------------------------|----------------------------------------------|----------------------------------|
-| **Labs** | 8 labs (Lab 00–07) | 9 labs (Lab 00–08, includes dashboard lab) | 8 labs (Lab 00–07) |
-| **Platform-specific labs** | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) |
-| **Full-day duration** | ~6.5 hours | ~6.5 hours | ~7.25 hours |
-| **Half-day duration** | ~3 hours (Labs 00, 01, 02, 03, 05) | ~3 hours (Labs 00, 01, 02, 03, 06) | ~3.5 hours (Labs 00, 01, 02, 03, 06) |
-| **Delivery tiers** | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) |
-| **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | Not yet implemented | No |
-| **Copilot artifacts** | Workshop agent + governance instructions | Not yet implemented | None |
-| **Screenshot script** | `capture-screenshots.ps1` (~900+ lines, 47 PNGs, 3 phases) | `capture-screenshots.ps1` (manifest-driven, ~125 lines + `screenshot-manifest.json`, 57 PNGs) | `capture-screenshots.ps1` (~710+ lines, 46 PNGs) |
-| **Playwright helpers** | `playwright-helpers.js` (screenshot, scan, auth-screenshot) | `playwright-helpers.js` + `screenshot-helpers.psm1` (PowerShell module) | Not present |
-| **Dev container** | Yes (Node.js 20 + Charm freeze) | Yes | Yes |
-| **GitHub Pages** | Yes (Jekyll) | Yes (Jekyll) | Yes (Jekyll) |
-| **Template repo** | Yes | Yes | Yes |
-| **Contributing guide** | Yes (lab authoring style guide) | Yes (lab authoring style guide) | Yes (lab authoring style guide) |
-| **License** | MIT | MIT | MIT |
+| Feature | Accessibility (`accessibility-scan-workshop`) | Code Quality (`code-quality-scan-workshop`) | FinOps (`finops-scan-workshop`) | APM Security (`apm-security-scan-workshop`) |
+|---------|------------------------------------------------|----------------------------------------------|----------------------------------|----------------------------------------------|
+| **Labs** | 8 labs (Lab 00–07) | 9 labs (Lab 00–08, includes dashboard lab) | 8 labs (Lab 00–07) | 10 labs (Lab 00–07, includes LiteLLM case study) |
+| **Platform-specific labs** | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) | GitHub + ADO (Lab 06-github, Lab 06-ado, Lab 07-github, Lab 07-ado) |
+| **Full-day duration** | ~6.5 hours | ~6.5 hours | ~7.25 hours | ~6.75 hours |
+| **Half-day duration** | ~3 hours (Labs 00, 01, 02, 03, 05) | ~3 hours (Labs 00, 01, 02, 03, 06) | ~3.5 hours (Labs 00, 01, 02, 03, 06) | ~3 hours (Labs 00, 01, 02, 03, 06) |
+| **Delivery tiers** | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) |
+| **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | Not yet implemented | No | Planned |
+| **Copilot artifacts** | Workshop agent + governance instructions | Not yet implemented | None | Planned |
+| **Screenshot script** | `capture-screenshots.ps1` (~900+ lines, 47 PNGs, 3 phases) | `capture-screenshots.ps1` (manifest-driven, ~125 lines + `screenshot-manifest.json`, 57 PNGs) | `capture-screenshots.ps1` (~710+ lines, 46 PNGs) | `capture-screenshots.ps1` (manifest-driven, 45–55 PNGs) |
+| **Playwright helpers** | `playwright-helpers.js` (screenshot, scan, auth-screenshot) | `playwright-helpers.js` + `screenshot-helpers.psm1` (PowerShell module) | Not present | Planned |
+| **Dev container** | Yes (Node.js 20 + Charm freeze) | Yes | Yes | Yes (Python 3.12 + APM CLI + Charm freeze) |
+| **GitHub Pages** | Yes (Jekyll) | Yes (Jekyll) | Yes (Jekyll) | Yes (Jekyll) |
+| **Template repo** | Yes | Yes | Yes | Yes |
+| **Contributing guide** | Yes (lab authoring style guide) | Yes (lab authoring style guide) | Yes (lab authoring style guide) | Yes (lab authoring style guide) |
+| **License** | MIT | MIT | MIT | MIT |
 
 The Accessibility workshop includes a workshop-specific Copilot agent that provides guided assistance during lab exercises, along with governance instructions that enforce coding standards within the workshop codebase. The FinOps workshop does not have equivalent Copilot artifacts. Adding a workshop agent and governance instructions to the FinOps workshop would bring AI-assisted lab guidance to parity. See [Gaps Identified](#gaps-identified) for remediation details.
 
@@ -161,7 +161,7 @@ Making Azure DevOps a first-class citizen means every GitHub Actions workflow ha
 | **Accessibility** | `accessibility-scan.yml` (5 workflows) | 10 pipelines + 5 templates | Yes | Yes | Yes (`A11yReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
 | **Code Quality** | `code-quality-scan.yml` (4 workflows) | 5 pipelines + 4 templates | Yes | Yes | Yes (`CodeQualityReport.pbip`, 4 pages planned) | Yes (scan-and-store → Azure Blob) |
 | **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | 5 pipelines + 2 templates | Yes | Yes | Yes (`FinOpsReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
-| **APM Security** | `apm-security.yml` | Inline pattern in docs | No | No | No | No |
+| **APM Security** | `apm-security.yml` | 5 pipelines (scan, gate, deploy-all, teardown-all, scan-and-store) | Yes | Yes | Yes (`APMSecurityReport.pbip`, 4 pages) | Yes (scan-and-store → Azure Blob) |
 
 ## Desired Features to Compare
 
@@ -227,6 +227,7 @@ Labs 00 through 05 represent roughly 80% of workshop content and are fully platf
 | Accessibility | Yes (5) | Yes (10 + 5 templates) | Yes | Yes | Yes | Yes | Yes | Yes (1 page) |
 | Code Quality | Yes (4) | Yes (5 + 4 templates) | Yes | Yes | Yes | Yes | Yes | Yes (`CodeQualityReport.pbip`, 4 pages planned) |
 | FinOps | Yes (2) | Yes (5 + 2 templates) | No | Yes | Yes | Yes | No | Yes (1 page) |
+| APM Security | Yes (4) | Yes (5 pipelines) | Yes | Yes | Yes | Yes | Yes | Yes (`APMSecurityReport.pbip`, 4 pages) |
 
 #### Target State Mapping
 
