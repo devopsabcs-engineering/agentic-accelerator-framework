@@ -69,7 +69,7 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Copilot agents** | 2 (a11y-detector, a11y-resolver) | 2 (CodeQualityDetector, CodeQualityResolver) | 5 (CostAnalysis, FinOpsGovernance, CostAnomalyDetector, CostOptimizer, DeploymentCostGate) | 2 (APMSecurityDetector, APMSecurityResolver) |
 | **Copilot prompts** | 2 (a11y-scan, a11y-fix) | 2 (code-quality-scan, code-quality-fix) | 2 (finops-scan, finops-fix) | 2 (apm-security-scan, apm-security-fix) |
 | **Copilot instructions** | 3 (wcag22-rules, a11y-remediation, ado-workflow) | 2 (code-quality, ado-workflow) | 2 (finops-governance, ado-workflow) | 2 (apm-security, ado-workflow) |
-| **Copilot skills** | 0 | 1 (code-quality-scan) | 1 (finops-scan) | 1 (apm-security-scan) |
+| **Copilot skills** | 1 (a11y-scan) | 1 (code-quality-scan) | 1 (finops-scan) | 1 (apm-security-scan) |
 | **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) |
 | **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines |
 | **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
@@ -89,8 +89,8 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Full-day duration** | ~6.5 hours | ~6.5 hours | ~7.25 hours | ~6.75 hours |
 | **Half-day duration** | ~3 hours (Labs 00, 01, 02, 03, 05) | ~3 hours (Labs 00, 01, 02, 03, 06) | ~3.5 hours (Labs 00, 01, 02, 03, 06) | ~3 hours (Labs 00, 01, 02, 03, 06) |
 | **Delivery tiers** | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) | 5 tiers (half-day GH, half-day ADO, full-day GH, full-day ADO, full-day dual) |
-| **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | Not yet implemented | No | Planned |
-| **Copilot artifacts** | Workshop agent + governance instructions | Not yet implemented | None | Planned |
+| **Workshop agent** | Yes (workshop-specific agent in `.github/agents/`) | Yes (defined in framework `agents/code-quality-workshop.agent.md`) | Yes (defined in framework `agents/finops-workshop.agent.md`) | Yes (defined in framework `agents/apm-security-workshop.agent.md`) |
+| **Copilot artifacts** | Workshop agent + governance instructions | Workshop agent (in framework) | Workshop agent (in framework) | Workshop agent (in framework) |
 | **Screenshot script** | `capture-screenshots.ps1` (~900+ lines, 47 PNGs, 3 phases) | `capture-screenshots.ps1` (manifest-driven, ~125 lines + `screenshot-manifest.json`, 57 PNGs) | `capture-screenshots.ps1` (~710+ lines, 46 PNGs) | `capture-screenshots.ps1` (manifest-driven, 45–55 PNGs) |
 | **Playwright helpers** | `playwright-helpers.js` (screenshot, scan, auth-screenshot) | `playwright-helpers.js` + `screenshot-helpers.psm1` (PowerShell module) | Not present | Planned |
 | **Dev container** | Yes (Node.js 20 + Charm freeze) | Yes | Yes | Yes (Python 3.12 + APM CLI + Charm freeze) |
@@ -99,7 +99,7 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Contributing guide** | Yes (lab authoring style guide) | Yes (lab authoring style guide) | Yes (lab authoring style guide) | Yes (lab authoring style guide) |
 | **License** | MIT | MIT | MIT | MIT |
 
-The Accessibility workshop includes a workshop-specific Copilot agent that provides guided assistance during lab exercises, along with governance instructions that enforce coding standards within the workshop codebase. The FinOps workshop does not have equivalent Copilot artifacts. Adding a workshop agent and governance instructions to the FinOps workshop would bring AI-assisted lab guidance to parity. See [Gaps Identified](#gaps-identified) for remediation details.
+All four domain workshops now have workshop-specific Copilot agents defined in the framework repository (`agents/{domain}-workshop.agent.md`). These agents provide guided assistance during lab exercises, helping students debug tool errors, interpret findings, and troubleshoot CI/CD configurations. The Accessibility workshop was the first to ship a workshop agent directly in its `.github/agents/` directory. The Code Quality, FinOps, and APM Security workshop agents are defined in the framework and ready for deployment to their respective workshop repositories.
 
 #### Screenshot Script Comparison
 
@@ -475,11 +475,9 @@ in
 
 Research across both domains reveals four remaining parity gaps spanning domain-level parity, dual-platform workshops, and Power BI PBIP coverage.
 
-### Gap 1: FinOps Workshop Has No Copilot Artifacts
+### Gap 1: Workshop Copilot Artifacts — PARTIALLY CLOSED
 
-The Accessibility workshop repository includes a workshop-specific agent and governance instructions. The FinOps workshop repository contains zero Copilot artifacts: no agents, prompts, instructions, or skills.
-
-To close this gap, create a FinOps workshop agent in `.github/agents/` and add governance instructions to `.github/instructions/` in the `finops-scan-workshop` repository, following the patterns established in the Accessibility workshop.
+**Status: PARTIALLY CLOSED** — All four domain workshops now have workshop agent definitions in the framework repository (`agents/a11y-workshop.agent.md`, `agents/code-quality-workshop.agent.md`, `agents/finops-workshop.agent.md`, `agents/apm-security-workshop.agent.md`). The Accessibility workshop was the first to deploy its agent directly to its `.github/agents/` directory. To fully close this gap, deploy the workshop agents from the framework to each workshop repository's `.github/agents/` directory and add governance instructions to `.github/instructions/`.
 
 ### ~~Gap 2: FinOps Demo App Has No ADO Pipelines~~ — CLOSED
 
