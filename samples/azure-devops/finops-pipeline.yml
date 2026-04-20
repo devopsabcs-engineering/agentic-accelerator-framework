@@ -1,0 +1,93 @@
+# FinOps Scan — Sample Azure DevOps Pipeline
+# Scans IaC files for cost optimization and governance violations using a 4-tool architecture.
+# Reference pipeline for the FinOps domain of the Agentic Accelerator Framework.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - '**/*.bicep'
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/*.json'
+      - '**/*.hcl'
+      - 'infra/**'
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - '**/*.bicep'
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/*.json'
+      - '**/*.hcl'
+      - 'infra/**'
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: PSRuleScan
+    displayName: 'Tool 1: PSRule for Azure'
+    jobs:
+      - job: PSRule
+        steps:
+          - checkout: self
+
+          - task: ps-rule-assert@2
+            inputs:
+              modules: PSRule.Rules.Azure
+              outputFormat: Sarif
+              outputPath: $(Build.ArtifactStagingDirectory)/psrule-results.sarif
+
+          - task: AdvancedSecurity-Publish@1
+            inputs:
+              SarifPath: '$(Build.ArtifactStagingDirectory)/psrule-results.sarif'
+
+  - stage: CheckovScan
+    displayName: 'Tool 2: Checkov CIS Scan'
+    dependsOn: []
+    jobs:
+      - job: Checkov
+        steps:
+          - checkout: self
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+
+          - script: |
+              pip install checkov
+              checkov -d infra/ --framework bicep terraform arm --output sarif --output-file $(Build.ArtifactStagingDirectory)/checkov-results.sarif
+            displayName: 'Run Checkov'
+
+          - task: AdvancedSecurity-Publish@1
+            inputs:
+              SarifPath: '$(Build.ArtifactStagingDirectory)/checkov-results.sarif'
+
+  - stage: InfracostAnalysis
+    displayName: 'Tool 3: Infracost Cost Estimate'
+    dependsOn: []
+    jobs:
+      - job: Infracost
+        steps:
+          - checkout: self
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+
+          - script: |
+              curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+              infracost breakdown --path infra/ --format json --out-file infracost.json
+              python src/converters/infracost-to-sarif.py --input infracost.json --output $(Build.ArtifactStagingDirectory)/infracost-results.sarif
+            displayName: 'Run Infracost'
+
+          - task: AdvancedSecurity-Publish@1
+            inputs:
+              SarifPath: '$(Build.ArtifactStagingDirectory)/infracost-results.sarif'

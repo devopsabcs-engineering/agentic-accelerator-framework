@@ -1,7 +1,7 @@
 ---
 title: "Related Repositories"
 description: "Catalog of all repositories in the Agentic Accelerator Framework ecosystem, organized by domain with links and status tracking."
-ms.date: 2026-04-02
+ms.date: 2026-04-20
 ms.topic: reference
 ---
 
@@ -15,11 +15,13 @@ The Agentic Accelerator Framework uses a multi-repo architecture. One central fr
 agentic-accelerator-framework          ← Framework (agents, skills, prompts, docs)
 agentic-accelerator-workshop            ← Framework workshop
 ├── accessibility-scan-demo-app         ← Accessibility scanner + 5 demo apps
-├── accessibility-scan-workshop         ← 8 labs teaching accessibility scanning
-├── finops-scan-demo-app                ← FinOps scanner + 5 demo apps
-├── finops-scan-workshop                ← 8 labs teaching FinOps scanning
+├── accessibility-scan-workshop         ← 10 labs teaching accessibility scanning
+├── apm-security-scan-demo-app          ← APM Security scanner + 5 demo apps
+├── apm-security-scan-workshop          ← 11 labs teaching APM Security scanning
 ├── code-quality-scan-demo-app          ← Code Quality scanner + 5 demo apps
-└── code-quality-scan-workshop          ← 8 labs teaching code quality scanning
+├── code-quality-scan-workshop          ← 11 labs teaching code quality scanning
+├── finops-scan-demo-app                ← FinOps scanner + 5 demo apps
+└── finops-scan-workshop                ← 10 labs teaching FinOps scanning
 ```
 
 ## Repository Catalog
@@ -34,6 +36,8 @@ agentic-accelerator-workshop            ← Framework workshop
 | 6 | `finops-scan-workshop` | Workshop | FinOps | Active | PowerShell |
 | 7 | `code-quality-scan-demo-app` | Scanner Demo | Code Quality | Active | TypeScript/Multi |
 | 8 | `code-quality-scan-workshop` | Workshop | Code Quality | Active | PowerShell |
+| 9 | `apm-security-scan-demo-app` | Scanner Demo | APM Security | Active | Python/Markdown |
+| 10 | `apm-security-scan-workshop` | Workshop | APM Security | Active | Markdown |
 
 All repositories live under the `devopsabcs-engineering` GitHub organization.
 
@@ -119,6 +123,36 @@ Eight hands-on labs teaching code quality scanning across multiple languages.
 | Labs | 8 labs (Lab 00–07) covering ESLint, Pylint, Checkstyle, dotnet-coverage, SARIF, CI/CD |
 | Delivery tiers | 5 tiers following the standard half-day/full-day/dual pattern |
 | Dual platform | GitHub Actions (Lab 06-github, Lab 07-github) and ADO Pipelines (Lab 06-ado, Lab 07-ado) |
+| Template repo | Yes |
+
+## APM Security Domain
+
+### `apm-security-scan-demo-app`
+
+4-engine APM security scanner for agent configuration files. Scans for Unicode steganography, lockfile integrity, semantic patterns, and MCP misconfigurations across 5 sample apps.
+
+| Aspect | Detail |
+|---|---|
+| Scanner engines | APM audit (Unicode + lockfile), semantic pattern scanner, MCP configuration validator |
+| Sample apps | 5 apps (Next.js, Flask, ASP.NET, Spring Boot, Go) with 84 intentional agent config violations |
+| SARIF generation | Mixed: APM audit native; semantic and MCP via 2 Python converters |
+| Copilot artifacts | 2 agents, 2 prompts, 1 instructions, 1 skill (in framework repo) |
+| GitHub Actions | 3 workflows (apm-security-scan, deploy-all, teardown-all) |
+| ADO pipelines | 5 pipelines (apm-security-scan, apm-security-gate, deploy-all, teardown-all, scan-and-store) |
+| Power BI PBIP | `power-bi/APMSecurityReport.pbip` (4 pages, 6 dimensions, star schema) |
+| Bootstrap scripts | `bootstrap-demo-apps.ps1`, `bootstrap-demo-apps-ado.ps1`, `setup-oidc.ps1`, `setup-oidc-ado.ps1` |
+
+### `apm-security-scan-workshop`
+
+Eleven hands-on labs teaching APM security scanning, including a real-world LiteLLM CVE case study. Delivered as a GitHub Pages site with a dev container.
+
+| Aspect | Detail |
+|---|---|
+| Labs | 11 labs (Lab 00–07, includes LiteLLM case study, ADO-specific labs) |
+| Delivery tiers | Half-day (3 h), Full-day GitHub (6.75 h), Full-day ADO (7 h), Full-day Dual (8.5 h) |
+| Screenshot script | `capture-screenshots.ps1` (Playwright-based, 45–55 PNGs) |
+| Workshop agent | Planned |
+| Dev container | Yes (Python 3.12 + APM CLI) |
 | Template repo | Yes |
 
 ## Two-Repo Pattern

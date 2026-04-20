@@ -1,0 +1,91 @@
+# FinOps Scan — Sample GitHub Actions Workflow
+# Scans IaC files for cost optimization and governance violations using a 4-tool architecture.
+# Reference pipeline for the FinOps domain of the Agentic Accelerator Framework.
+
+name: FinOps Scan
+
+on:
+  pull_request:
+    paths:
+      - '**/*.bicep'
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/*.json'
+      - '**/*.hcl'
+      - 'infra/**'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.bicep'
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/*.json'
+      - '**/*.hcl'
+      - 'infra/**'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  psrule-scan:
+    name: "Tool 1: PSRule for Azure"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/ps-rule@v2
+        with:
+          modules: PSRule.Rules.Azure
+          outputFormat: Sarif
+          outputPath: psrule-results.sarif
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: psrule-results.sarif
+          category: finops/psrule
+
+  checkov-scan:
+    name: "Tool 2: Checkov CIS Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          framework: bicep,terraform,arm
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: finops/checkov
+
+  infracost-analysis:
+    name: "Tool 3: Infracost Cost Estimate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate cost estimate
+        run: infracost breakdown --path infra/ --format json --out-file infracost.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Convert to SARIF
+        run: python src/converters/infracost-to-sarif.py --input infracost.json --output infracost-results.sarif
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: infracost-results.sarif
+          category: finops/infracost

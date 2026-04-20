@@ -73,7 +73,7 @@ The demo-app repo owns all scanning logic, Copilot artifacts, and infrastructure
 | **Bootstrap script** | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets, Infracost key (GitHub + ADO) | `bootstrap-demo-apps.ps1` + `bootstrap-demo-apps-ado.ps1` — creates repos, OIDC, secrets (GitHub + ADO) |
 | **OIDC setup script** | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for 6 repos (GitHub + ADO) | `setup-oidc.ps1` + `setup-oidc-ado.ps1` — Azure AD federation for GitHub Actions + ADO Pipelines |
 | **ADO bootstrap script** | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF | `bootstrap-demo-apps-ado.ps1` — ADO project provisioning, repos, WIF |
-| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI |
+| **Scan-and-store script** | `scan-and-store.ps1` — weekly scan to Azure Blob for Power BI | `scan-and-store.ps1` — weekly scan to ADLS Gen2 for Power BI | `scan-and-store.ps1` — weekly SARIF to Azure Blob for Power BI | `scan-and-store.ps1` — weekly SARIF to ADLS Gen2 for Power BI |
 | **Power BI PBIP** | `a11y-pbi-report/A11yReport.pbip` (1 page, 7 dimensions) | `power-bi/CodeQualityReport.pbip` (4 pages planned) | `power-bi/FinOpsReport.pbip` (1 page, 5 dimensions) | `power-bi/APMSecurityReport.pbip` (4 pages, 6 dimensions) |
 | **GitHub Actions** | 5 workflows (ci, deploy, a11y-scan, deploy-all, scan-all) | 4 workflows (code-quality-scan, code-quality-lint-gate, deploy-all, teardown-all) | 4 workflows (finops-scan, finops-cost-gate, deploy-all, teardown-all) | 4 workflows (apm-security-scan, apm-security-gate, deploy-all, teardown-all) |
 | **Azure DevOps pipelines** | 10 pipelines + 5 templates (ci, ci-cd, deploy, deploy-all, a11y-scan, a11y-scan-advancedsecurity, adv-sec-scan, scan-all, scan-and-store + 5 templates) | 5 pipelines + 4 templates (code-quality-scan, code-quality-lint-gate, deploy-all, scan-and-store, teardown-all + app-repo-scan, deploy-app, scan-app, teardown-app templates) | 5 pipelines + 2 templates (finops-scan, finops-cost-gate, deploy-all, teardown-all, scan-and-store + 2 templates) | 5 pipelines (apm-security-scan, apm-security-gate, deploy-all, teardown-all, scan-and-store) |
@@ -122,32 +122,34 @@ New domains should follow this pattern and create a `capture-screenshots.ps1` sc
 
 | Aspect | Current State | Gap |
 |--------|---------------|-----|
-| **Security pages** | 3 pages (Overview, Alerts by Type, Trend Analysis) — centralized repo returns HTTP 404, status unverifiable | Status unknown |
+| **Security pages** | 3 pages (Overview, Alerts by Type, Trend Analysis) — active internal repo `advsec-pbi-report-ado`, private due to embedded PAT token in data source | Will remain private until OAuth2/ADLS Gen2 replaces PAT-based connection |
 | **Accessibility pages** | Per-domain PBIP: `A11yReport.pbip` (1 page: accessibility_compliance) | Need 4 additional pages per spec (5 total) |
 | **FinOps pages** | Per-domain PBIP: `FinOpsReport.pbip` (1 page: finops_compliance) | Need 5 additional pages per spec (6 total) |
 | **Code Quality pages** | Per-domain PBIP: `CodeQualityReport.pbip` (4 pages planned: Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking) | Need implementation of planned pages |
-| **Data source** | Accessibility: Azure Blob Storage (`a11yscan7yt3mwgxp3wiy`); FinOps: Azure Blob Storage (`finopsscanstore2497`) | Per-domain Blob Storage replaces centralized ADO REST API |
-| **Format** | PBIP per domain (code-based, Git-friendly) | Transition from centralized to per-domain is complete for A11y, Code Quality, and FinOps |
+| **APM Security pages** | Per-domain PBIP: `APMSecurityReport.pbip` (4 pages, 6 dimensions, star schema) — most complete public PBIP | Fully implemented |
+| **Data source** | Accessibility: Azure Blob Storage (`a11yscan7yt3mwgxp3wiy`); Code Quality: ADLS Gen2; FinOps: Azure Blob Storage (`finopsscanstore2497`); APM Security: ADLS Gen2 | Code Quality and APM Security on target architecture (ADLS Gen2); Accessibility and FinOps on Azure Blob Storage |
+| **Format** | PBIP per domain (code-based, Git-friendly) | Transition from centralized to per-domain is complete for A11y, Code Quality, FinOps, and APM Security |
 
-The transition from a single centralized report to per-domain PBIPs is underway. The centralized `advsec-pbi-report-ado` repository returns HTTP 404 and may no longer be available. All three domains (Accessibility, Code Quality, and FinOps) now own their PBIPs in their respective demo-app repositories, sourcing data from Azure Blob Storage rather than the originally specified ADLS Gen 2 + OAuth2.
+The transition from a single centralized report to per-domain PBIPs is well advanced. The centralized `advsec-pbi-report-ado` repository is an active internal repo kept private because the Power BI data source embeds a PAT token for the ADO Advanced Security REST API. It will remain private until OAuth2/ADLS Gen2 replaces the PAT-based connection. All four public domains (Accessibility, Code Quality, FinOps, and APM Security) now own their PBIPs in their respective demo-app repositories. Code Quality and APM Security source data from ADLS Gen2 (target architecture); Accessibility and FinOps use Azure Blob Storage.
 
 #### Three-Tier Dashboard Architecture
 
 The Power BI reporting strategy follows a three-tier architecture:
 
-1. **Centralized AdvSec Report** (`advsec-pbi-report-ado`) — Security-focused dashboard powered by the ADO Advanced Security REST API, with 3 pages (Security Overview, Alerts by Type, Trend Analysis) and a star schema built on `Fact_SecurityAlerts` + 5 dimension tables.
+1. **Centralized AdvSec Report** (`advsec-pbi-report-ado`) — Security-focused dashboard powered by the ADO Advanced Security REST API, with 3 pages (Security Overview, Alerts by Type, Trend Analysis) and a star schema built on `Fact_SecurityAlerts` + 5 dimension tables. This is an active internal repo kept private due to an embedded PAT token in the data source. Pre-commit hooks are required to prevent PAT leakage.
 2. **Per-domain PBIPs** — Each domain owns its PBIP in its demo-app repository:
    * Accessibility: `a11y-pbi-report/A11yReport.pbip` (star schema, Azure Blob Storage)
-   * Code Quality: `power-bi/CodeQualityReport.pbip` (4 pages planned)
+   * Code Quality: `power-bi/CodeQualityReport.pbip` (4 pages planned, ADLS Gen2)
    * FinOps: `power-bi/FinOpsReport.pbip` (star schema, Azure Blob Storage)
-3. **Holistic view** — The centralized AdvSec report provides the Advanced Security findings view, while the 3 domain dashboards (Accessibility, Code Quality, FinOps) provide domain-specific deep dives. Together they offer a holistic view across all scanning domains.
+   * APM Security: `power-bi/APMSecurityReport.pbip` (4 pages, 6 dimensions, star schema, ADLS Gen2) — most complete public PBIP
+3. **Holistic view** — The centralized AdvSec report provides the Advanced Security findings view, while the 4 domain dashboards (Accessibility, Code Quality, FinOps, APM Security) provide domain-specific deep dives. Together they offer a holistic view across all five scanning domains.
 
 | Aspect | Current (Centralized) | Target (Per-Domain PBIP) | Realized State |
 |--------|----------------------|-------------------------|----------------|
-| **Ownership** | Single `advsec-pbi-report-ado` repo (returns 404) | Each `{domain}-scan-demo-app/power-bi/` | A11y: `a11y-pbi-report/`, FinOps: `power-bi/` |
-| **Data source** | ADO Advanced Security REST API | ADLS Gen 2 + OAuth2 (Organizational Account) | Azure Blob Storage + SAS token / Entra ID |
-| **Schema** | Flat query results | Star schema: `Fact_Findings` + 6 dimension tables | Star schema implemented (both domains) |
-| **Format** | PBIP (centralized) | PBIP per domain (code-based, Git-friendly) | PBIP per domain (both domains) |
+| **Ownership** | Single `advsec-pbi-report-ado` repo (active, private — PAT token risk) | Each `{domain}-scan-demo-app/power-bi/` | A11y: `a11y-pbi-report/`, Code Quality: `power-bi/`, FinOps: `power-bi/`, APM Security: `power-bi/` |
+| **Data source** | ADO Advanced Security REST API | ADLS Gen 2 + OAuth2 (Organizational Account) | Code Quality + APM Security: ADLS Gen2; Accessibility + FinOps: Azure Blob Storage |
+| **Schema** | Flat query results | Star schema: `Fact_Findings` + 6 dimension tables | Star schema implemented (all four domains) |
+| **Format** | PBIP (centralized) | PBIP per domain (code-based, Git-friendly) | PBIP per domain (all four domains) |
 
 See [Desired Features to Compare](#desired-features-to-compare) for full architecture details.
 
@@ -157,7 +159,7 @@ Making Azure DevOps a first-class citizen means every GitHub Actions workflow ha
 
 | Domain | GH Actions | ADO Pipelines | ADO Workshop Labs | GH Workshop Labs | PBIP | SARIF → Storage |
 |--------|-----------|---------------|-------------------|------------------|------|----------------|
-| **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | No | Yes | Partial (3 pages) — repo returns 404, status unknown | No |
+| **Security** | `security-scan.yml` | `security-pipeline.yml` (sample) | No | Yes | Partial (3 pages) — active internal repo, private due to PAT token | No |
 | **Accessibility** | `accessibility-scan.yml` (5 workflows) | 10 pipelines + 5 templates | Yes | Yes | Yes (`A11yReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
 | **Code Quality** | `code-quality-scan.yml` (4 workflows) | 5 pipelines + 4 templates | Yes | Yes | Yes (`CodeQualityReport.pbip`, 4 pages planned) | Yes (scan-and-store → Azure Blob) |
 | **FinOps** | `finops-scan.yml`, `finops-cost-gate.yml` | 5 pipelines + 2 templates | Yes | Yes | Yes (`FinOpsReport.pbip`, 1 page) | Yes (scan-and-store → Azure Blob) |
@@ -223,7 +225,7 @@ Labs 00 through 05 represent roughly 80% of workshop content and are fully platf
 
 | Domain | GH Workflows | ADO Pipelines (demo-app) | ADO Pipeline (framework sample) | GH Workshop Labs | ADO Workshop Labs | GH SARIF Upload | ADO SARIF Upload | PBIP |
 |--------|--------------|--------------------------|--------------------------------|------------------|-------------------|-----------------|------------------|------|
-| Security | Yes | N/A | Yes | Yes | No | Yes | Yes | Partial (3 pages) — repo returns 404, status unknown |
+| Security | Yes | N/A | Yes | Yes | No | Yes | Yes | Partial (3 pages) — active internal repo, private due to PAT token |
 | Accessibility | Yes (5) | Yes (10 + 5 templates) | Yes | Yes | Yes | Yes | Yes | Yes (1 page) |
 | Code Quality | Yes (4) | Yes (5 + 4 templates) | Yes | Yes | Yes | Yes | Yes | Yes (`CodeQualityReport.pbip`, 4 pages planned) |
 | FinOps | Yes (2) | Yes (5 + 2 templates) | No | Yes | Yes | Yes | No | Yes (1 page) |
@@ -485,11 +487,11 @@ To close this gap, create a FinOps workshop agent in `.github/agents/` and add g
 
 ### Gap 3: Domain-Specific Power BI Pages Below Spec — PARTIALLY CLOSED
 
-**Status: PARTIALLY CLOSED** — All three domains now have per-domain PBIPs (Accessibility: `A11yReport.pbip` with 1 page, Code Quality: `CodeQualityReport.pbip` with 4 pages planned, FinOps: `FinOpsReport.pbip` with 1 page). However, the spec calls for 5 pages (Accessibility), 4 pages (Code Quality), and 6 pages (FinOps).
+**Status: PARTIALLY CLOSED** — All four public domains now have per-domain PBIPs (Accessibility: `A11yReport.pbip` with 1 page, Code Quality: `CodeQualityReport.pbip` with 4 pages planned, FinOps: `FinOpsReport.pbip` with 1 page, APM Security: `APMSecurityReport.pbip` with 4 pages, 6 dimensions, star schema). APM Security ships the most complete public PBIP. However, the spec calls for 5 pages (Accessibility), 4 pages (Code Quality), and 6 pages (FinOps).
 
 To fully close this gap, add the remaining report pages to each domain's PBIP as specified in the domain-specific report pages table in [Desired Features to Compare](#desired-features-to-compare).
 
-> **Note**: The centralized `advsec-pbi-report-ado` repo returns HTTP 404. The Security domain PBIP status is unknown. The per-domain PBIP approach may have fully replaced the centralized model.
+> **Note**: The centralized `advsec-pbi-report-ado` repo is an active internal repo (3 pages for the Security domain) kept private because the Power BI data source embeds a PAT token for the ADO Advanced Security REST API. Pre-commit hooks are required to prevent PAT leakage. It will remain private until OAuth2/ADLS Gen2 replaces the PAT-based connection.
 
 ### Gap 4: SARIF Generation Approach Differs Between Domains
 
@@ -499,17 +501,18 @@ This is a design difference driven by tool capabilities rather than a gap requir
 
 ### ~~Gap 5: No ADO Workshop Labs~~ — CLOSED
 
-**Status: CLOSED** — All 4 workshops (Agentic Accelerator, Accessibility, Code Quality, and FinOps) now include ADO-specific lab variants (`lab-06-ado-sarif-advsec.md` and `lab-07-ado-pipelines.md`). Every workshop supports 5 delivery tiers: half-day GitHub, half-day ADO, full-day GitHub, full-day ADO, and full-day dual-platform. Labs 00–05 remain platform-agnostic.
+**Status: CLOSED** — All 5 workshops (Agentic Accelerator, Accessibility, Code Quality, FinOps, and APM Security) now include ADO-specific lab variants (`lab-06-ado-sarif-advsec.md` and `lab-07-ado-pipelines.md`). Every workshop supports 5 delivery tiers: half-day GitHub, half-day ADO, full-day GitHub, full-day ADO, and full-day dual-platform. Labs 00–05 remain platform-agnostic.
 
 ### ~~Gap 6: No Domain-Specific Power BI PBIPs~~ — CLOSED
 
-**Status: CLOSED** — All three domains (Accessibility, Code Quality, and FinOps) now have per-domain PBIPs:
+**Status: CLOSED** — All four public domains (Accessibility, Code Quality, FinOps, and APM Security) now have per-domain PBIPs:
 
 * Accessibility: `a11y-pbi-report/A11yReport.pbip` with full TMDL semantic model (`Fact_A11yViolations` + 7 dimensions)
 * Code Quality: `power-bi/CodeQualityReport.pbip` with 4 planned report pages (Quality Overview, Coverage by Repository, Complexity Analysis, Test Generation Tracking)
 * FinOps: `power-bi/FinOpsReport.pbip` with full TMDL semantic model (`Fact_FinOpsFindings` + 5 dimensions)
+* APM Security: `power-bi/APMSecurityReport.pbip` with 4 pages, 6 dimensions, star schema — most complete public PBIP, sourcing from ADLS Gen2
 
-Both PBIPs source data from Azure Blob Storage (not ADLS Gen 2 as originally specified). The scan-and-store pipeline pattern feeds data into these PBIPs on a weekly schedule.
+Code Quality and APM Security source data from ADLS Gen2 (target architecture). Accessibility and FinOps source data from Azure Blob Storage. The scan-and-store pipeline pattern feeds data into these PBIPs on a weekly schedule.
 
 ## Contributing a New Domain
 
@@ -774,7 +777,7 @@ For Code Quality, create these report pages:
 | Complexity Analysis | Cyclomatic complexity distribution, high-complexity function list |
 | Test Generation Tracking | Tests generated vs. coverage improvement correlation |
 
-The centralized report (`advsec-pbi-report-ado`) returns HTTP 404 and may no longer be available. Refer to existing per-domain PBIPs (Accessibility: `a11y-pbi-report/`, FinOps: `power-bi/`) as implementation examples.
+The centralized report (`advsec-pbi-report-ado`) is an active internal repo kept private due to an embedded PAT token in the Power BI data source. Refer to existing per-domain PBIPs (Accessibility: `a11y-pbi-report/`, Code Quality: `power-bi/`, FinOps: `power-bi/`, APM Security: `power-bi/`) as implementation examples.
 
 ### Step 10: Ensure ADO First-Class Citizenship
 
@@ -850,7 +853,7 @@ Use this checklist when contributing a new domain:
 
 ### Power BI Report
 
-- [ ] ~~Add report pages to `advsec-pbi-report-ado`~~ Create per-domain PBIP (centralized repo returns 404, may be deprecated)
+- [ ] ~~Add report pages to `advsec-pbi-report-ado`~~ Create per-domain PBIP (centralized repo is active but private due to PAT token — use per-domain PBIPs instead)
 - [ ] Add fact and dimension tables to semantic model
 - [ ] Document Power Query M expressions and DAX measures
 - [ ] Test with real data from scan-and-store pipeline output
